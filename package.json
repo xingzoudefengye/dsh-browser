@@ -11,9 +11,13 @@
     "playwright",
     "cdp"
   ],
+  "homepage": "https://github.com/xingzoudefengye/dsh-browser#readme",
+  "bugs": {
+    "url": "https://github.com/xingzoudefengye/dsh-browser/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/CJYLZS/dsh-browser.git"
+    "url": "git+https://github.com/xingzoudefengye/dsh-browser.git"
   },
   "type": "module",
   "main": "lib/index.js",
