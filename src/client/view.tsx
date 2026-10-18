@@ -305,6 +305,15 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
    * since it was last reported — so the report is re-sent rather than skipped.
    */
   const reportSizeRef = useRef<((force?: boolean) => void) | undefined>(undefined)
+  /**
+   * Set when the host answered that it does not know `resize`.
+   *
+   * A pane and a host can be at different revisions for a moment — the client
+   * bundle reloads on its own, while the host half needs a plugin reload. An
+   * old host refusing the message is a compatibility fact, not a browser
+   * failure, so it stops the reports without covering the mirror with an error.
+   */
+  const resizeRefusedRef = useRef(false)
   const socketRef = useRef<WebSocket | undefined>(undefined)
   const lastMoveRef = useRef(0)
   const pasteSinkRef = useRef<HTMLTextAreaElement | null>(null)
@@ -372,7 +381,11 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
       }
       // A refused action is otherwise invisible: the status the viewer holds is
       // unchanged, so the failure is what explains why nothing moved.
-      if (parsed.type === 'error') setFailure(String(parsed.message))
+      if (parsed.type === 'error') {
+        const message = String(parsed.message)
+        if (message.includes('unknown viewer message "resize"')) resizeRefusedRef.current = true
+        else setFailure(message)
+      }
       // The mirror's selection, on its way back from the host. It is spent at
       // once and can only be spent once: it belongs to the chord that asked.
       if (parsed.type === 'clipboard') {
@@ -429,6 +442,7 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
     let timer: ReturnType<typeof setTimeout> | undefined
     let last = ''
     const report = (force = false): void => {
+      if (resizeRefusedRef.current) return
       const width = Math.round(stage.clientWidth)
       const height = Math.round(stage.clientHeight)
       if (width < 120 || height < 120) return
