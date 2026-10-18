@@ -123,16 +123,17 @@ export async function launchBrowser(
     // is far smaller than a real page expects — measured at 764x485, which
     // crops most sites.
     //
-    // Headful used to pass `null` and let the real window be the viewport.
-    // Measured on macOS: `page.setViewportSize` then sets an emulated layout
-    // viewport while the window stays as large as the OS allows it to be, so
-    // `innerWidth/innerHeight` reported 581x581 while `Page.startScreencast`
-    // could only capture a 581x494 surface. The mirrored frame came back
-    // shorter than the pane, and `object-fit: contain` drew it with black bands
-    // above and below — the pane's own size was right, the frames were not.
-    // With an emulated viewport the renderer surface follows the requested
-    // size exactly (measured 581x581, 705x1150, 469x1400 all match their
-    // frames), so the pane and the frame can never disagree.
+    // Headful used to pass `null` and let the real window be the viewport, so
+    // the pane and the page could never agree on a size at all.
+    //
+    // This is only the starting size. The pane reports the box it draws in on
+    // connect and on every resize, and `SessionBrowser.resizePane` pins the
+    // rendered surface to it over CDP: measured on macOS, Playwright's own
+    // `page.setViewportSize` resizes the window and applies the metrics
+    // override side by side, the window resize lands last, and the ~87 CSS px
+    // of Chrome UI leave the surface 87 px shorter than the viewport it
+    // emulated (window 632x581, surface 632x494). That shorter frame in
+    // `object-fit: contain` is exactly the black bands above and below.
     viewport: { width: config.viewportWidth, height: config.viewportHeight },
     args,
     ...config.executablePath === '' ? { channel: config.channel } : { executablePath: config.executablePath },

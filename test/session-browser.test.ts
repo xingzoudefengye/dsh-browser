@@ -2245,3 +2245,23 @@ test('candidates with no name are not told to narrow by a name they do not have'
     return true
   })
 })
+
+test('a pane report sizes the rendered surface, not only an emulated viewport', async () => {
+  const { browser, page } = await started()
+  await browser.resizePane(undefined, 632, 581)
+  assert.deepEqual(page.cdp.method('Emulation.setDeviceMetricsOverride').map(call => call.params), [{
+    mobile: false,
+    width: 632,
+    height: 581,
+    screenWidth: 632,
+    screenHeight: 581,
+    deviceScaleFactor: 1,
+    screenOrientation: { angle: 0, type: 'landscapePrimary' },
+    dontSetVisibleSize: false,
+  }])
+  // The same size reported again still has to reach the browser: Playwright's
+  // own record answers for the emulated viewport while the surface can be
+  // 87 px shorter, so a cache hit there would keep the black bands.
+  await browser.resizePane(undefined, 632, 581)
+  assert.equal(page.cdp.method('Emulation.setDeviceMetricsOverride').length, 2)
+})
