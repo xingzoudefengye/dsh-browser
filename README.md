@@ -184,7 +184,7 @@ The plugin keys everything by the harness session id, and that one decision expl
 <a id="configuration"></a>
 ## Configuration
 
-The settings section (Settings → Browser) edits the fields below and reports what is actually running, which is not the same thing as what is configured: the banner lists every session's browser with the port, window mode, and page count it really has. A deployment without a settings provider registers nothing, and the composition entry is the whole configuration.
+The settings section (Settings → Browser) asks three things and nothing else: which browser, whether it gets a window, and where its profile lives. Every other field below is set in `cordis.yml` (or the composition entry) rather than on the page; they are still volatile, so editing one restarts the browsers that are running. The section also reports what is actually running, which is not the same thing as what is configured: the banner lists every session's browser with the port, window mode, and page count it really has. A deployment without a settings provider registers nothing, and the composition entry is the whole configuration.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
@@ -193,12 +193,12 @@ The settings section (Settings → Browser) edits the fields below and reports w
 | `headless` | `true` | Run without a window. Headless has nothing to occlude or minimize, so it is the recommended value. |
 | `stealth` | `true` | Remove the two markers a Playwright-started browser carries: `navigator.webdriver` and, headless, a user agent spelled `HeadlessChrome/…`. |
 | `userDataDir` | empty | Parent directory of the per-session profiles; empty means a temporary profile per browser, removed when it exits. |
-| `debugPortMin` / `debugPortMax` | `9333` / `9400` | Window the per-session CDP ports are allocated from; each browser takes the lowest free one. Changing it moves where the *next* browser listens and leaves running browsers on the ports they already hold. |
+| `debugPortMin` / `debugPortMax` | `9038` / `9237` | Window the per-session CDP ports are allocated from; each browser takes the lowest free one. Changing it moves where the *next* browser listens and leaves running browsers on the ports they already hold. |
 | `viewportWidth` / `viewportHeight` | `1440` / `900` | The page's initial emulated viewport, in both modes. A connected Sidebar pane reports its own size and overrides it; these values are what a browser with no pane (and the first frames before a pane reports) uses. |
 | `quality` | `70` | JPEG quality of mirrored frames. |
 | `maxWidth` / `maxHeight` | `1600` / `1200` | Longest edge of a mirrored frame, in device pixels. |
 | `everyNthFrame` | `1` | Mirror every Nth composited frame. |
-| `snapshotNodes` | `300` | Most accessibility-tree nodes one `browser_snapshot` prints before it truncates and says so. |
+| `snapshotNodes` | `500` | Most accessibility-tree nodes one `browser_snapshot` prints before it truncates and says so. |
 | `maxInstances` | `4` | How many session browsers may run at once; reaching the limit fails the request rather than evicting a browser someone is watching. |
 | `startupUrl` | `about:blank` | First address a browser opens. |
 | `extraArgs` | `[]` | Additional browser arguments, appended after the plugin's own. |

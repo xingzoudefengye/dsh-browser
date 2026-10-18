@@ -1,8 +1,8 @@
 /**
- * The settings page is one long form with a fold in the middle, so its shape is
- * a decision worth pinning down: which fields a user must see, which ones only
- * matter when something is unusual, whether every field has words, and whether
- * the status banner still says enough once its per-session detail is collapsed.
+ * The settings page is a short form plus a status banner, so its shape is a
+ * decision worth pinning down: which fields a user sees, which ones are off the
+ * page on purpose, whether every field still has words, and whether the banner
+ * says enough once its per-session detail is collapsed.
  *
  * The layout lives in `src/client/settings-layout.ts` rather than in the
  * component because a `.tsx` cannot be imported here — Node strips types, not
@@ -14,25 +14,16 @@ import { Config } from '../src/config.ts'
 import { en, zh, type DshBrowserKey } from '../src/client/locales.ts'
 import type { ClientBrowserStatus } from '../src/client/api.ts'
 import {
-  ADVANCED_GROUPS,
   FIELD_COPY,
   FIELD_PLACEMENTS,
-  GROUP_COPY,
+  HIDDEN_FIELDS,
   PROFILE_DIR_COPY,
-  advancedSummary,
-  foldedPlacements,
   instanceLine,
-  overriddenCount,
-  placementsIn,
   statusLine,
-  visiblePlacements,
 } from '../src/client/settings-layout.ts'
 
 /** One copy function, as the section receives it. */
 const english = (key: keyof typeof en): string => en[key]
-
-/** The same, in the other shipped language. */
-const chinese = (key: keyof typeof en): string => zh[key]
 
 /** The fields the schema lets the settings page edit. */
 function volatileFields(): string[] {
@@ -46,8 +37,18 @@ function volatileFields(): string[] {
 /** The fields the page places. */
 const placedFields = (): string[] => FIELD_PLACEMENTS.map(placement => placement.field).sort()
 
-test('the page edits exactly the configuration fields the schema marks volatile', () => {
-  assert.deepEqual(placedFields(), volatileFields())
+test('the page shows exactly the three choices a user makes', () => {
+  assert.deepEqual(placedFields(), ['channel', 'headless', 'userDataDir'])
+})
+
+test('every volatile field is either on the page or deliberately hidden', () => {
+  const named = [...placedFields(), ...HIDDEN_FIELDS].sort()
+  assert.deepEqual(named, volatileFields(), 'a volatile field is neither placed nor hidden')
+})
+
+test('no field is both placed and hidden', () => {
+  const hidden: readonly string[] = HIDDEN_FIELDS
+  assert.deepEqual(placedFields().filter(field => hidden.includes(field)), [])
 })
 
 test('every field is placed once, so no control is rendered twice or dropped', () => {
@@ -56,38 +57,18 @@ test('every field is placed once, so no control is rendered twice or dropped', (
   assert.ok(fields.length > 0)
 })
 
-test('only the fields a browser needs to work are outside the fold', () => {
-  assert.deepEqual(visiblePlacements().map(placement => placement.field), ['headless', 'channel', 'userDataDir'])
-  const folded = foldedPlacements().map(placement => placement.field).sort()
-  assert.deepEqual(folded, ['debugPortMax', 'debugPortMin', 'executablePath', 'quality', 'snapshotAttributes', 'snapshotIgnore', 'stealth', 'viewportHeight', 'viewportWidth'])
-})
-
-test('every placed field is reachable from a block the page renders', () => {
-  const rendered = [...visiblePlacements(), ...foldedPlacements()].map(placement => placement.field).sort()
-  assert.deepEqual(rendered, placedFields(), 'a placement sits in a block the page never renders')
-})
-
-test('every folded block has a heading and is not empty', () => {
-  for (const group of ADVANCED_GROUPS) {
-    assert.ok(placementsIn(group).length > 0, `${group} renders a heading over nothing`)
-    assert.notEqual(GROUP_COPY[group], undefined, `${group} has no copy`)
-  }
-  assert.deepEqual([...ADVANCED_GROUPS], ['process', 'mirror', 'snapshot'])
-})
-
-test('placementsIn returns one block in table order', () => {
-  const process = placementsIn('process')
-  assert.deepEqual(process.map(placement => placement.field), ['stealth', 'executablePath', 'debugPortMin', 'debugPortMax'])
-  assert.deepEqual(placementsIn('everyday').map(placement => placement.field), ['headless', 'channel', 'userDataDir'])
+test('a placed field is reachable from the list the page renders', () => {
+  const rendered = FIELD_PLACEMENTS.map(placement => placement.field).sort()
+  assert.deepEqual(rendered, placedFields())
 })
 
 test('every labelled row has copy in both shipped languages', () => {
-  // Field rows and block headings carry the same two strings under different
-  // names; flattening them here is what lets one loop cover both.
+  // A field keeps its words even while it is off the page: the hidden list is a
+  // decision to stop asking, not a reason for two dictionaries to drift apart,
+  // and re-exposing one must not need new copy.
   const rows: { label: DshBrowserKey; hint?: DshBrowserKey }[] = [
     ...Object.values(FIELD_COPY),
     PROFILE_DIR_COPY,
-    ...Object.values(GROUP_COPY).map(entry => ({ label: entry.title, hint: entry.hint })),
   ]
   for (const row of rows) {
     for (const key of [row.label, ...(row.hint === undefined ? [] : [row.hint])]) {
@@ -100,21 +81,6 @@ test('every labelled row has copy in both shipped languages', () => {
   for (const placement of FIELD_PLACEMENTS) {
     assert.notEqual(FIELD_COPY[placement.field], undefined, `${placement.field} has no copy`)
   }
-})
-
-test('the fold advertises the fields it hides that the user has changed', () => {
-  const user = { headless: true, debugPortMin: 9334, snapshotIgnore: 'nav', unrelated: 1 }
-  assert.equal(overriddenCount(user, visiblePlacements()), 1)
-  assert.equal(overriddenCount(user, placementsIn('process')), 1)
-  assert.equal(overriddenCount(user, foldedPlacements()), 2)
-  assert.equal(overriddenCount({}, FIELD_PLACEMENTS), 0)
-})
-
-test('the fold says nothing about changes when nothing is hidden behind it', () => {
-  assert.equal(advancedSummary(english, 0), en.settingsAdvanced)
-  assert.notEqual(advancedSummary(english, 2), en.settingsAdvanced)
-  assert.match(advancedSummary(english, 2), /\b2\b/)
-  assert.match(advancedSummary(chinese, 3), /3/)
 })
 
 test('the banner reports the strongest state among the running browsers', () => {

@@ -25,15 +25,10 @@ import type { ConfigForm, SettingsSectionOwnerProps } from '@deepseek-ai/dsh-cli
 import type { DshBrowserKey } from './locales.ts'
 import { browserStatus, type ClientBrowserReport } from './api.ts'
 import {
-  ADVANCED_GROUPS,
   FIELD_COPY,
-  GROUP_COPY,
+  FIELD_PLACEMENTS,
   PROFILE_DIR_COPY,
-  advancedSummary,
-  foldedPlacements,
   instanceLine,
-  overriddenCount,
-  placementsIn,
   statusLine,
   type BrowserSettingsView,
   type FieldPlacement,
@@ -95,15 +90,6 @@ const styles: Readonly<Record<string, CSSProperties>> = {
   statusDetail: { fontSize: '12px', lineHeight: 1.5, color: 'var(--dsw-alias-label-tertiary)', wordBreak: 'break-all', display: 'block' },
   statusSummary: { fontSize: '12px', lineHeight: 1.5, color: 'var(--dsw-alias-label-tertiary)', cursor: 'pointer' },
   statusFailed: { color: 'var(--dsw-alias-state-error-primary)' },
-  fold: { display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '0.5px solid var(--dsw-alias-border-l2)', paddingTop: '12px' },
-  foldSummary: { cursor: 'pointer', fontSize: '13px', fontWeight: 500, lineHeight: 1.5, color: 'var(--dsw-alias-label-primary)' },
-  block: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  blockDivided: {
-    display: 'flex', flexDirection: 'column', gap: '10px',
-    borderTop: '0.5px solid var(--dsw-alias-border-l2)', paddingTop: '12px',
-  },
-  blockTitle: { margin: 0, fontSize: '13px', fontWeight: 500, lineHeight: 1.5, color: 'var(--dsw-alias-label-primary)' },
-  blockHint: { margin: 0, fontSize: '12px', lineHeight: 1.5, color: 'var(--dsw-alias-label-tertiary)' },
   save: { margin: 0, fontSize: '12px', lineHeight: 1.5, color: 'var(--dsw-alias-label-tertiary)', minHeight: '18px' },
   saveFailed: { margin: 0, fontSize: '12px', lineHeight: 1.5, color: 'var(--dsw-alias-state-error-primary)', minHeight: '18px' },
 }
@@ -147,27 +133,13 @@ function Row(props: {
   )
 }
 
-/** One block inside the fold: what it covers, then its rows. */
-function Block(props: {
-  readonly title: string
-  readonly hint: string
-  readonly divided: boolean
-  readonly children: ReactNode
-}): ReactElement {
-  // A labelled region rather than a heading: the settings page this renders into
-  // has no document outline of its own, so a heading level here would be an
-  // invented one. The label is what a screen reader announces on entry.
-  return (
-    <section aria-label={props.title} style={props.divided ? styles.blockDivided : styles.block}>
-      <div style={styles.blockTitle}>{props.title}</div>
-      <p style={styles.blockHint}>{props.hint}</p>
-      {props.children}
-    </section>
-  )
-}
-
 /**
  * The 浏览器 settings page.
+ *
+ * Three rows, then what is actually running. Everything else the schema lets a
+ * deployment set lives in `cordis.yml`: the page answers "which browser, with a
+ * window or not, which profile", and a user who has to answer a fourth question
+ * to open a browser is being asked to learn the plugin instead.
  * @param props - section owner props plus the bound namespace scope.
  * @returns the section element.
  */
@@ -415,8 +387,6 @@ export function BrowserSettingsSection(
     )
   }
 
-  const hiddenChanges = overriddenCount(user, foldedPlacements())
-
   return (
     <div style={styles.page}>
       <p style={styles.intro}>{t('settingsIntro')}</p>
@@ -449,7 +419,7 @@ export function BrowserSettingsSection(
         : <p style={styles.save}>{saved ? t('settingsSaved') : ''}</p>}
 
       <div style={styles.group}>
-        {placementsIn('everyday').map(placement => placedRow(placement))}
+        {FIELD_PLACEMENTS.map(placement => placedRow(placement))}
         {persistent
           ? row(
               t(PROFILE_DIR_COPY.label),
@@ -468,21 +438,6 @@ export function BrowserSettingsSection(
             )
           : null}
       </div>
-
-      <details style={styles.fold}>
-        <summary style={styles.foldSummary}>{advancedSummary(t, hiddenChanges)}</summary>
-        <p style={styles.note}>{t('settingsAdvancedHint')}</p>
-        {ADVANCED_GROUPS.map((group, index) => (
-          <Block
-            key={group}
-            title={t(GROUP_COPY[group].title)}
-            hint={t(GROUP_COPY[group].hint)}
-            divided={index > 0}
-          >
-            {placementsIn(group).map(placement => placedRow(placement))}
-          </Block>
-        ))}
-      </details>
 
       <p style={styles.note}>{t('settingsApplied')}</p>
     </div>

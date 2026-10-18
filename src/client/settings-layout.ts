@@ -1,23 +1,30 @@
 /**
  * The shape of the 浏览器 settings page, as data.
  *
- * The page is one form with two tiers. The first is what a browser needs to
- * start at all — which one, whether it gets a window, and where its profile
- * lives. The second is everything that already has a working default and only
- * gets touched when something is unusual: automation markers, the executable
- * path, the CDP port, the headless page size, the mirror quality, and what the
- * agent's snapshot prints. The second tier is folded away.
+ * The page shows three rows and nothing else: which browser, whether it gets a
+ * window, and where its profile lives. Those three are the choices a user
+ * actually makes, and none of them can be inferred from how the plugin is used.
  *
- * The tables here are the single source of that shape: the component renders the
- * groups in the order declared, and TypeScript refuses to build a component that
- * has no control for a placed field. The point is that adding a field to the
- * configuration cannot silently leave the page with a control that never
- * renders — or with a field the user can no longer override.
+ * The rest of the configuration is not on the page at all. Every one of those
+ * fields has a default that only needs changing when something is wrong, and a
+ * settings page that lists them is a settings page nobody reads: P1 added two
+ * rows and the page turned into a wall of controls a non-developer cannot
+ * classify — measured 2026-10-18, when the fold advertised "2 项已自定义" for the
+ * two viewport fields, i.e. the two entries nobody could interpret. They remain
+ * ordinary configuration in `cordis.yml`, still volatile, so a write there still
+ * reaches a running browser.
+ *
+ * {@link HIDDEN_FIELDS} names them rather than leaving their absence implicit:
+ * a configuration field has to be either placed or hidden on purpose, and
+ * `test/settings-layout.test.ts` rejects a field that is neither. That is the
+ * point the two-tier layout kept — nothing can slip off the page silently — with
+ * the exposure decided by who the reader is instead of by what the schema marks
+ * volatile.
  *
  * It is a plain `.ts` module because the section itself is a `.tsx`, which no
  * test can import: Node strips types, not JSX. Everything here is free of React,
- * so the page's copy decisions — the fold's own summary line, the group
- * headings, the status banner — are testable on their own.
+ * so the page's copy decisions — the status banner, the session lines — are
+ * testable on their own.
  */
 import type { DshBrowserKey } from './locales.ts'
 import type { ClientBrowserReport, ClientBrowserStatus } from './api.ts'
@@ -38,51 +45,58 @@ export interface BrowserSettingsView {
   readonly snapshotIgnore: string
 }
 
-/**
- * The blocks inside the fold, in page order.
- *
- * This list is the page's structure, not a hint: a group missing from it would
- * have its fields placed but never rendered, which the tests reject. A group is
- * folded as a whole — splitting one would leave a heading with nothing under it
- * in the visible tier.
- */
-export const ADVANCED_GROUPS = ['process', 'mirror', 'snapshot'] as const
-
-/** One block inside the fold. */
-export type AdvancedGroup = typeof ADVANCED_GROUPS[number]
-
-/** Every block of the page; `everyday` is the visible tier. */
-export type SettingsGroup = 'everyday' | AdvancedGroup
-
 /** One field's place on the page. */
 export interface FieldPlacement {
   /** The configuration field this placement renders. */
   readonly field: keyof BrowserSettingsView
-  /** The block it belongs to. */
-  readonly group: SettingsGroup
 }
 
 /**
- * Every editable field, in the order the page renders it.
+ * The fields the page renders, in page order.
  *
- * The set is exactly the volatile half of the configuration schema — a field the
- * loader lets the settings page write has to appear here, and
- * `test/settings-layout.test.ts` fails when the two lists drift apart.
+ * A field may appear once; the page renders exactly this list, so a field the
+ * loader lets the settings page write is either here or in
+ * {@link HIDDEN_FIELDS}, and the test fails when the two lists do not add up to
+ * the schema's volatile set.
  */
 export const FIELD_PLACEMENTS: readonly FieldPlacement[] = [
-  { field: 'headless', group: 'everyday' },
-  { field: 'channel', group: 'everyday' },
-  { field: 'userDataDir', group: 'everyday' },
-  { field: 'stealth', group: 'process' },
-  { field: 'executablePath', group: 'process' },
-  { field: 'debugPortMin', group: 'process' },
-  { field: 'debugPortMax', group: 'process' },
-  { field: 'viewportWidth', group: 'mirror' },
-  { field: 'viewportHeight', group: 'mirror' },
-  { field: 'quality', group: 'mirror' },
-  { field: 'snapshotAttributes', group: 'snapshot' },
-  { field: 'snapshotIgnore', group: 'snapshot' },
+  { field: 'headless' },
+  { field: 'channel' },
+  { field: 'userDataDir' },
 ]
+
+/**
+ * The volatile fields the page deliberately does not render.
+ *
+ * Each one is editable in `cordis.yml` and takes effect there; what they do not
+ * get is a control, because a control would be asking the user a question only a
+ * failure can pose:
+ *
+ * - `stealth` — the default is the only sane value; off exists to reproduce the
+ *   A/B that justifies the default, not as a preference.
+ * - `executablePath` — for installs the `channel` lookup misses.
+ * - `debugPortMin` / `debugPortMax` — only when the port window collides with
+ *   something else on this machine, or a deployment opens more sessions than
+ *   the window is wide.
+ * - `viewportWidth` / `viewportHeight` — the initial size; a panel that connects
+ *   reports its own and overrides it, so the value is felt only by a browser
+ *   nobody is watching.
+ * - `quality` — mirror sharpness against bandwidth, and the default is the
+ *   measured middle.
+ * - `snapshotAttributes` / `snapshotIgnore` — what the agent's snapshot prints;
+ *   a deployment's knob, not a user's.
+ */
+export const HIDDEN_FIELDS = [
+  'stealth',
+  'executablePath',
+  'debugPortMin',
+  'debugPortMax',
+  'viewportWidth',
+  'viewportHeight',
+  'quality',
+  'snapshotAttributes',
+  'snapshotIgnore',
+] as const satisfies readonly (keyof BrowserSettingsView)[]
 
 /** The label and hint one field's row renders. */
 export interface FieldCopy {
@@ -93,11 +107,13 @@ export interface FieldCopy {
 }
 
 /**
- * Copy for every placed field.
+ * Copy for every configuration field, placed or hidden.
  *
  * A separate table from {@link FIELD_PLACEMENTS} because the order the page
  * renders in and the words it uses are different concerns that happen to share a
- * key; keeping the record total means a new field cannot appear unlabelled.
+ * key. It stays total over the view — a hidden field keeps its words so that the
+ * next person to ask "why is this not on the page" reads the same sentence the
+ * row would have shown, and so re-exposing one needs no new copy.
  */
 export const FIELD_COPY: Record<keyof BrowserSettingsView, FieldCopy> = {
   headless: { label: 'settingsMode', hint: 'settingsHeadlessNote' },
@@ -116,68 +132,8 @@ export const FIELD_COPY: Record<keyof BrowserSettingsView, FieldCopy> = {
   snapshotIgnore: { label: 'settingsSnapshotIgnore', hint: 'settingsSnapshotIgnoreHint' },
 }
 
-/** The heading and one-line explanation of a block inside the fold. */
-export const GROUP_COPY: Record<AdvancedGroup, { readonly title: DshBrowserKey; readonly hint: DshBrowserKey }> = {
-  process: { title: 'settingsGroupProcess', hint: 'settingsGroupProcessHint' },
-  mirror: { title: 'settingsGroupMirror', hint: 'settingsGroupMirrorHint' },
-  snapshot: { title: 'settingsGroupSnapshot', hint: 'settingsGroupSnapshotHint' },
-}
-
 /** The row that continues the profile field once a directory is wanted. */
 export const PROFILE_DIR_COPY: FieldCopy = { label: 'settingsProfileDir', hint: 'settingsProfileDirHint' }
-
-/**
- * The placements of one block, in page order.
- * @param group - the block to render.
- * @returns its fields, in the order they are declared.
- */
-export function placementsIn(group: SettingsGroup): readonly FieldPlacement[] {
-  return FIELD_PLACEMENTS.filter(placement => placement.group === group)
-}
-
-/**
- * The fields that start a browser, and therefore stay visible.
- * @returns the placements outside the fold.
- */
-export function visiblePlacements(): readonly FieldPlacement[] {
-  return placementsIn('everyday')
-}
-
-/**
- * The fields behind the fold, in page order.
- * @returns every folded placement.
- */
-export function foldedPlacements(): readonly FieldPlacement[] {
-  return ADVANCED_GROUPS.flatMap(group => placementsIn(group))
-}
-
-/**
- * How many of these fields the user layer holds.
- *
- * The fold hides its fields' controls, and with them their reset buttons, so a
- * change made inside it would otherwise be invisible from the collapsed page.
- * @param user - the user's own settings layer, as the form reports it.
- * @param placements - the fields to look at.
- * @returns the number of them the user has overridden.
- */
-export function overriddenCount(
-  user: Record<string, unknown>,
-  placements: readonly FieldPlacement[],
-): number {
-  return placements.filter(placement => Object.hasOwn(user, placement.field)).length
-}
-
-/**
- * The line the fold shows while closed.
- * @param t - copy for this namespace.
- * @param overridden - how many hidden fields the user has changed.
- * @returns the summary, mentioning them when there are any.
- */
-export function advancedSummary(t: (key: DshBrowserKey) => string, overridden: number): string {
-  const title = t('settingsAdvanced')
-  if (overridden === 0) return title
-  return `${title} · ${t('settingsAdvancedOverridden').replace('{count}', String(overridden))}`
-}
 
 /**
  * What the banner says about the browsers right now.
