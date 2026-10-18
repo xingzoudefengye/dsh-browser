@@ -51,3 +51,5 @@ Status: implemented
 ## 与其他层的关系
 
 **一个事实只有一个家**：常驻规则在根 `AGENTS.md`，使用方法在 `README.md` / `README.zh.md`，衡量与对拍产物在 `.prove/`，决定与理由在本目录。别处需要时**链接过去**，不要复述。
+
+唯一的例外是 `.prove/`：它不进仓库（在 `.gitignore` 里），所以引用里面的脚本时**写成路径文本**（`` `.prove/xxx.mjs` ``）而不是相对链接——`notes.test.ts` 会把链到不存在文件的相对链接判红，而新克隆里 `.prove/` 确实不存在。

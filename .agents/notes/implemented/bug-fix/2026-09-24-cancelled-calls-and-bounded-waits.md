@@ -32,7 +32,7 @@ Status: implemented
 
 谁 abort 决定了模型看到哪一句，两者都是"会返回"：
 
-- **预算到点**：`dsh-tool-call-timeout-policy` 在它自己的计时器赢下时用结构化的 `TOOL_TIMEOUT`（`tool call timed out after <n>ms`）**替换**工具自己的错误，所以那条"页面已停下、浏览器可以继续用"的说明不会出现在这种情况下；这不是本插件能改的（[策略在 `packages/guard/timeout-policy/src/index.ts:73`](../../../../../../packages/guard/timeout-policy/src/index.ts)）。
+- **预算到点**：`dsh-tool-call-timeout-policy` 在它自己的计时器赢下时用结构化的 `TOOL_TIMEOUT`（`tool call timed out after <n>ms`）**替换**工具自己的错误，所以那条"页面已停下、浏览器可以继续用"的说明不会出现在这种情况下；这不是本插件能改的。策略在上游 harness 仓库的 `packages/guard/timeout-policy/src/index.ts:73`——那条路径不在本仓库，所以只写文件名不链过去。
 - **调用方中断**（用户按中断、这一轮被取消）：走的是 `cancelable()` 自己的错误，也就是 `dsh-browser: … was cancelled by the caller; the page was stopped, and the browser is free for the next call`。
 
 ## Alternatives considered

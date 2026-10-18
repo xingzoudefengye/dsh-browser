@@ -33,6 +33,7 @@ Chrome 或 Edge 以独立进程运行，有自己的 profile、自己的 CDP 端
 - [特点](#highlights)
 - [安装](#install)
 - [版本适配](#compatibility)
+- [验证、卸载与排错](#verify)
 - [使用](#usage)
 - [理解设计](#understand-the-design)
 - [配置](#configuration)
@@ -40,6 +41,8 @@ Chrome 或 Edge 以独立进程运行，有自己的 profile、自己的 CDP 端
 - [已知限制与待办](#known-limitations-and-deferred-work)
 - [开发](#dev-note)
   - [第三方代码](#third-party-code)
+- [相关插件](#related)
+- [许可](#license)
 
 -----
 
@@ -56,23 +59,37 @@ dsh -V
 
 | 你的 dsh | 插件版本 | 安装命令 |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.3（最新） | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.3` |
+| ≥ 0.1.7-rc.1 | v0.2.4（最新） | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.4` |
 | 0.1.5-rc.2 | v0.1.x | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.1.0` |
 
 属于当前世代的 dsh，装最新版就是这条：
 
 ```sh
-dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.3
+dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.4
 ```
 
 构建产物 `lib/` 随每个 tag 提交，所以按 tag 安装不需要构建。profile 的 `package.json` 会记下你选的 ref；换版本就用新 ref 重新 add，移除插件用 `dsh plugin remove --profile web dsh-browser`。装完都要重启 harness。机器上需要已安装 Chrome 或 Edge；`playwright-core` 是运行依赖，它自己不会下载浏览器。
+
+### 平台
+
+| 平台 | 状态 | 说明 |
+| --- | --- | --- |
+| Windows 10/11 | **已验证** —— 唯一端到端跑过的平台 | profile 在 `%USERPROFILE%\.dsh`；Desktop 的 CLI 是 `dsh.cmd` |
+| macOS | **还没跑过** | 插件与浏览器都一样；profile 在 `~/.dsh`，Desktop 的 CLI 是应用包内的 `bin/dsh`。最可能出差异的是 `channel` 查找、临时目录和进程回收 |
+| Linux | **还没跑过** | 同 macOS 的注意事项；另外要确保装了 Chrome 或 Edge 且能被找到 |
+
+无论哪个平台都需要：
+
+- **Node ≥ 22**，且 **`pnpm` 在 `PATH` 上**（`dsh plugin add` 内部调 pnpm）
+- **已安装 Chrome 或 Edge**：`playwright-core` 是运行时依赖但不下载浏览器，插件通过它的 `channel` 查找驱动机器上已有的安装；装在非标准路径时用设置页的 `executablePath` 指过去
+- `github:` 安装需要能访问 **`codeload.github.com`**（public 仓库，不需要 token）
 
 ### Desktop
 
 Desktop 应用自己拥有它的 profile，而普通 CLI 有意拒绝管理 `--profile desktop`，所以走随应用一起发布的 Desktop CLI：
 
 ```sh
-"<Desktop 安装目录>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:CJYLZS/dsh-browser#v0.2.3
+"<Desktop 安装目录>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:CJYLZS/dsh-browser#v0.2.4
 ```
 
 macOS 与 Linux 用 `<Desktop 安装目录>/resources/runtime/cli/bin/dsh`。装完重启应用，和 Web profile 用 `dsh plugin add` 之后一样；卸载用同一个 `remove`。
@@ -90,6 +107,43 @@ macOS 与 Linux 用 `<Desktop 安装目录>/resources/runtime/cli/bin/dsh`。装
 - **v0.1.x → dsh 0.1.5-rc.2**，声明为 `peerDependencies: ^0.1.5-rc.2`。设置页注册 namespace scope 并自行渲染控件。
 
 版本旧了会明确失败：只有当插件的 dsh peer 满足声明的区间时 dsh 才激活它，否则报出插件名与未满足的区间。更高的世代会被这条检查放行，所以这份构建在某一代上还跑不跑得起来，是验证的问题而不是版本号的问题。
+
+<a id="verify"></a>
+## 验证、卸载与排错
+
+### 验证
+
+确认这几行真的进了合成后的配置树：
+
+```sh
+dsh --profile web --dump-config | grep -E "dsh-browser|cdpBrowser"
+```
+
+```powershell
+dsh --profile web --dump-config | Select-String -Pattern "dsh-browser|cdpBrowser"
+```
+
+运行中的浏览器会在 host origin 上回应 `GET /dsh-browser/status`；在会话里让 agent 调一次 `browser_tabs`（`action: "list"`）是最快的证明。
+
+### 卸载
+
+```sh
+dsh plugin remove --profile web dsh-browser
+```
+
+之后重启 harness。卸载**不会**删除 `userDataDir` —— 它存着每个会话一个浏览器 profile 子目录，要清掉登录态得自己删。
+
+### 出问题时
+
+| 现象 | 原因 | 处理 |
+| --- | --- | --- |
+| 九个工具不见了，或者没有 Browser 标签 | 插件已在 profile 的 `package.json` 里，但正在跑的 host 是启动时就把模块图建好的 | 重启 `dsh web`。对运行中的 host，`dsh plugin add` 本身不会改变任何东西 |
+| 改了 `lib/index.js`（host 半边）却没反应 | Node 的 ESM 缓存不会重新执行已 import 的模块 | 重启 host。客户端半边不同：`lib/client.js` 由 `dsh-client-hmr` 热替换，通常连刷新都不用 |
+| 侧栏一直白屏 | 浏览器没在跑、崩了，或者 CDP 端口窗口用尽 | 调一次 `browser_tabs` 会启动；看 `/dsh-browser/status`；窗口里没有空端口时放宽 `debugPortMin`/`debugPortMax` |
+| `browser_click` 被拒，说「…会接收这次按下」 | 目标被别的东西盖住了——菜单、模态框、吸顶导航 | 先关掉它，或者传 `force: true`：照样派发，并在回报里写 `obstructed` |
+| 页面画得很小，四周留背景 | v0.2.4 之前的构建把镜像视口钉在 1000×1240，而不是侧栏自己的尺寸 | 升到 v0.2.4 或更高：侧栏把自身尺寸报给 host，视口跟着它变 |
+| 找不到 Chrome 或 Edge | `channel` 查找没命中 | 装上 Chrome/Edge，或在设置页把 `executablePath` 指到它的绝对路径 |
+| 工具调用报 `no session` | 调用方没有自己的会话——定时任务或子代理 | 这是有意的；从会话里发起 |
 
 <a id="usage"></a>
 ## 使用
@@ -221,3 +275,21 @@ dsh plugin add --profile web link:/absolute/path/to/dsh-browser
 ### 第三方代码
 
 没有打包任何第三方代码。`lib/index.js` 以运行时依赖的形式 import `playwright-core`（Apache-2.0）与 `ws`（MIT），`lib/client.js` 只需要宿主 shell 的平台模块——因此上游的安全更新通过用户自己的安装到达用户，而不是通过本仓库转发。插件也不附带浏览器：它通过 `playwright-core` 的 `channel` 查找驱动机器上已有的 Chrome 或 Edge，所以"捆绑浏览器"那种约 200MB 的下载不属于安装的一部分。
+
+-----
+
+<a id="related"></a>
+## 相关插件
+
+同作者、同样的安装方式（`dsh plugin add --profile web github:CJYLZS/<repo>`）：
+
+- [dsh-web-search-failover](https://github.com/xingzoudefengye/dsh-web-search-failover) — 按顺序尝试多个搜索后端的故障转移
+- [dsh-compaction-local-handoff](https://github.com/xingzoudefengye/dsh-compaction-local-handoff) — 无模型的本地交接式压缩
+- [dsh-project-memory](https://github.com/xingzoudefengye/dsh-project-memory) — 有界、可提交进 git 的项目记忆
+- [dsh-resume-budget](https://github.com/xingzoudefengye/dsh-resume-budget) — 会话恢复时的输入预算控制
+- [dsh-session-recall](https://github.com/xingzoudefengye/dsh-session-recall) — 无模型、有界的会话史书
+
+<a id="license"></a>
+## 许可
+
+MIT © CJYLZS，见 [LICENSE](LICENSE)。

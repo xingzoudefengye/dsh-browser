@@ -33,6 +33,7 @@ It is not an embedded web view. The page runs in an ordinary browser process, so
 - [Highlights](#highlights)
 - [Install](#install)
 - [Compatibility](#compatibility)
+- [Verify, uninstall, troubleshoot](#verify)
 - [Usage](#usage)
 - [Understand the design](#understand-the-design)
 - [Configuration](#configuration)
@@ -40,6 +41,8 @@ It is not an embedded web view. The page runs in an ordinary browser process, so
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
   - [Third-party code](#third-party-code)
+- [Related plugins](#related)
+- [License](#license)
 
 -----
 
@@ -56,23 +59,37 @@ Then install with the `#<tag>` ref that version pairs with — a build targets o
 
 | Your dsh | Plugin version | Install command |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.3 (latest) | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.3` |
+| ≥ 0.1.7-rc.1 | v0.2.4 (latest) | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.4` |
 | 0.1.5-rc.2 | v0.1.x | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.1.0` |
 
 For a dsh on the current generation, the latest release is:
 
 ```sh
-dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.3
+dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.4
 ```
 
 The built `lib/` is committed with each tag, so a tag install needs no build step. The profile's `package.json` records the ref you chose; to change versions, re-add with the new ref, and to remove the plugin use `dsh plugin remove --profile web dsh-browser`. Restart the harness after installing. A Chrome or Edge installation is required; `playwright-core` is a dependency and downloads no browser of its own.
+
+### Platform
+
+| Platform | Status | What to expect |
+| --- | --- | --- |
+| Windows 10/11 | **verified** — the only platform run end to end | `%USERPROFILE%\.dsh` holds the profile; the Desktop CLI is `dsh.cmd` |
+| macOS | **not yet run** | Same plugin and same browser; the profile is `~/.dsh`, the Desktop CLI is `bin/dsh` inside the app bundle. The `channel` lookup, temporary directories, and process teardown are the parts most likely to differ |
+| Linux | **not yet run** | Same caveat as macOS, and a Chrome or Edge build has to be installed and discoverable |
+
+Either way, you need:
+
+- **Node ≥ 22** and **pnpm** on `PATH` — `dsh plugin add` shells out to pnpm.
+- **Chrome or Edge already installed.** `playwright-core` is a runtime dependency and downloads no browser of its own: the plugin drives the installation already on the machine through its `channel` lookup. Set `executablePath` when the lookup misses a non-standard install.
+- **Network access to `codeload.github.com`** for a `github:` install (public repository, no token needed).
 
 ### Desktop
 
 The Desktop app owns its own profile, and the ordinary CLI refuses to manage `--profile desktop` on purpose, so install through the Desktop CLI that ships with the app:
 
 ```sh
-"<Desktop install dir>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:CJYLZS/dsh-browser#v0.2.3
+"<Desktop install dir>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:CJYLZS/dsh-browser#v0.2.4
 ```
 
 Use `<Desktop install dir>/resources/runtime/cli/bin/dsh` on macOS and Linux. Restart the app afterwards, the same way the Web profile restarts after `dsh plugin add`; the same `remove` verb uninstalls it.
@@ -90,6 +107,43 @@ That fork is in the client half's imports, so one build cannot target both gener
 - **v0.1.x → dsh 0.1.5-rc.2**, declared as `peerDependencies: ^0.1.5-rc.2`. The settings page registers a namespace scope and renders its own controls.
 
 An older dsh fails loudly: dsh activates a plugin only when its dsh peers satisfy the declared ranges, and names the plugin and the unsatisfied ranges when they do not. A later generation passes that check, so whether this build still runs on one is a question for verification rather than for the version number.
+
+<a id="verify"></a>
+## Verify, uninstall, troubleshoot
+
+### Verify
+
+Whether the rows are really in the composed tree:
+
+```sh
+dsh --profile web --dump-config | grep -E "dsh-browser|cdpBrowser"
+```
+
+```powershell
+dsh --profile web --dump-config | Select-String -Pattern "dsh-browser|cdpBrowser"
+```
+
+A running browser answers `GET /dsh-browser/status` on the host origin, and from a conversation `browser_tabs` with `action: "list"` is the quickest proof that the tools are live.
+
+### Uninstall
+
+```sh
+dsh plugin remove --profile web dsh-browser
+```
+
+Restart the harness afterwards. Removal does not delete `userDataDir`, which holds one browser profile subdirectory per session — delete that yourself if its sign-ins should go too.
+
+### When something does not work
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| The nine tools are missing, or no Browser tab appears | The plugin is in the profile's `package.json`, but the running host built its module graph at startup | Restart `dsh web`. `dsh plugin add` changes nothing inside a running host |
+| An edit to `lib/index.js` (the host half) has no effect | Node's ESM cache never re-executes an imported module | Restart the host. The client half differs: `lib/client.js` is hot-reloaded by `dsh-client-hmr`, usually without a refresh |
+| The pane stays on a blank page | No browser is running, it crashed, or the CDP port window is exhausted | `browser_tabs` starts one; read `/dsh-browser/status`; widen `debugPortMin`/`debugPortMax` when every port in the window is taken |
+| `browser_click` is refused because "…would receive the press" | Another element covers the target — a menu, a modal, a sticky header | Close it, or pass `force: true`, which sends the press anyway and reports `obstructed` |
+| The page is drawn small with background bands around it | A build before v0.2.4 pinned the mirrored viewport to 1000×1240 instead of the pane's size | Upgrade to v0.2.4 or later: the pane reports its own size and the viewport follows it |
+| Chrome or Edge cannot be found | The `channel` lookup missed the installation | Install Chrome or Edge, or set `executablePath` on the settings page to its absolute path |
+| A tool call fails with `no session` | The caller has no session of its own — a scheduled job or a subagent | By design; run it from a conversation |
 
 <a id="usage"></a>
 ## Usage
@@ -221,3 +275,21 @@ The built `lib/` is committed, so commit the rebuilt output with any source chan
 ### Third-party code
 
 None is bundled. `lib/index.js` imports `playwright-core` (Apache-2.0) and `ws` (MIT) as runtime dependencies, and `lib/client.js` requires only the host shell's platform modules, so upstream security updates reach users through their own install rather than through this repository. The plugin ships no browser either: it drives the Chrome or Edge installation that is already on the machine, through `playwright-core`'s `channel` lookup, so the roughly 200 MB download a bundled browser would cost is not part of installing this.
+
+-----
+
+<a id="related"></a>
+## Related plugins
+
+Same author, same install shape (`dsh plugin add --profile web github:CJYLZS/<repo>`):
+
+- [dsh-web-search-failover](https://github.com/xingzoudefengye/dsh-web-search-failover) — ordered web-search failover across backends
+- [dsh-compaction-local-handoff](https://github.com/xingzoudefengye/dsh-compaction-local-handoff) — model-free local-handoff compaction
+- [dsh-project-memory](https://github.com/xingzoudefengye/dsh-project-memory) — bounded, git-committable project memory
+- [dsh-resume-budget](https://github.com/xingzoudefengye/dsh-resume-budget) — resume input budget
+- [dsh-session-recall](https://github.com/xingzoudefengye/dsh-session-recall) — bounded, model-free session chronicle
+
+<a id="license"></a>
+## License
+
+MIT © CJYLZS, see [LICENSE](LICENSE).
