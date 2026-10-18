@@ -295,6 +295,8 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
    */
   const tabId = tab === undefined ? undefined : tab.tab.id
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  /** The box the canvas is fitted into, whose size the mirrored page takes. */
+  const stageRef = useRef<HTMLDivElement | null>(null)
   const socketRef = useRef<WebSocket | undefined>(undefined)
   const lastMoveRef = useRef(0)
   const pasteSinkRef = useRef<HTMLTextAreaElement | null>(null)
@@ -398,6 +400,43 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
   const sendInput = useCallback((message: unknown): void => {
     send({ type: 'input', message })
   }, [send])
+
+  /**
+   * Keep the mirrored page's viewport the size of the box it is drawn in.
+   *
+   * The canvas fits a frame into the stage with `object-fit: contain`, so a
+   * page whose viewport aspect differs from the stage is letterboxed — a wide
+   * page in a tall Sidebar leaves two black bands. Reporting the stage size lets
+   * the host set the page viewport to it, and the frame then fills the stage.
+   *
+   * Reported on connect and whenever the stage resizes; the debounce is what
+   * keeps a dragged sidebar edge from resizing the browser on every frame.
+   */
+  useEffect(() => {
+    const stage = stageRef.current
+    if (stage === null || !connected) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let last = ''
+    const report = (): void => {
+      const width = Math.round(stage.clientWidth)
+      const height = Math.round(stage.clientHeight)
+      if (width < 120 || height < 120) return
+      const key = `${width}x${height}`
+      if (key === last) return
+      last = key
+      send({ type: 'resize', width, height })
+    }
+    report()
+    const observer = new ResizeObserver(() => {
+      if (timer !== undefined) clearTimeout(timer)
+      timer = setTimeout(report, 200)
+    })
+    observer.observe(stage)
+    return () => {
+      observer.disconnect()
+      if (timer !== undefined) clearTimeout(timer)
+    }
+  }, [connected, send])
 
   /**
    * Arm the clipboard for the chord just pressed.
@@ -507,7 +546,7 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
           ? <IconButton label={copy('go')} icon={GO_ICON} onClick={submit} submit />
           : <IconButton label={copy('reload')} icon={RELOAD_ICON} onClick={() => { send({ type: 'reload' }) }} />}
       </form>
-      <div style={style.stage}>
+      <div ref={stageRef} style={style.stage}>
         <canvas
           ref={canvasRef}
           tabIndex={0}

@@ -4115,6 +4115,32 @@ export class SessionBrowser {
     this.publish()
   }
 
+  /**
+   * Give one page the CSS viewport its pane is drawn in.
+   *
+   * The pane draws frames with `object-fit: contain`, so a page whose viewport
+   * aspect differs from the box is letterboxed — a wide page in a tall Sidebar
+   * leaves two black bands. The pane reports the box size on connect and on
+   * resize; matching the page viewport to it makes the frame fill the box.
+   *
+   * A pane that names a page resizes that page; one that names none resizes the
+   * active page. Nothing is started here: a viewer may report a size before the
+   * browser it watches exists, and that is not a failure.
+   * @param targetId - the page's CDP target id, when the viewer named one.
+   * @param width - the box width in CSS pixels.
+   * @param height - the box height in CSS pixels.
+   */
+  async resizePane(targetId: string | undefined, width: number, height: number): Promise<void> {
+    const page = targetId === undefined ? this.page : this.pageByTargetId(targetId)
+    if (page === undefined) return
+    const current = page.viewportSize()
+    if (current !== null && current.width === width && current.height === height) return
+    await page.setViewportSize({ width, height })
+    // The size changed under any cached viewport, so coordinates asked about
+    // this page must be read again rather than reused.
+    this.invalidateViewport(page)
+  }
+
   /** Stop the browser and release its port and temporary profile. */
   async close(): Promise<void> {
     this.closing = true

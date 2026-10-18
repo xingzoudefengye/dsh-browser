@@ -38,6 +38,19 @@ export const SESSION_PARAM = 'session'
 /** Query parameter naming the page the viewer wants, by its CDP target id. */
 export const PAGE_PARAM = 'page'
 
+/** Smallest and largest CSS viewport a pane may ask for, in pixels. */
+const VIEWPORT_MIN = 120
+const VIEWPORT_MAX = 4096
+
+/**
+ * Hold a reported pane dimension inside a range a browser can take.
+ * @param value - the reported width or height, already rounded.
+ * @returns the value itself, or the nearer bound.
+ */
+function clampViewport(value: number): number {
+  return Math.min(VIEWPORT_MAX, Math.max(VIEWPORT_MIN, value))
+}
+
 /**
  * The session — and, when named, the page — a viewer asked for.
  * @param request - the upgrade request.
@@ -229,6 +242,18 @@ async function handleMessage(
       if (pageId === undefined) await browser.reload()
       else await browser.reloadPage(pageId)
       return
+    // The pane's box is what the frame is fitted into, so the pane reports its
+    // size and the page takes it: a wide page in a tall Sidebar would otherwise
+    // be letterboxed. Bounded here because the number arrives from a client.
+    case 'resize': {
+      const width = Math.round(Number((parsed as { width: unknown }).width))
+      const height = Math.round(Number((parsed as { height: unknown }).height))
+      if (!Number.isFinite(width) || !Number.isFinite(height)) {
+        throw new Error('dsh-browser: resize needs a finite width and height')
+      }
+      await browser.resizePane(pageId, clampViewport(width), clampViewport(height))
+      return
+    }
     // The pane's own two controls for a browser it cannot use: one throws away
     // a browser that is gone or broken, the other stops one that is fine — and
     // asking for it to stop is what keeps it stopped.
