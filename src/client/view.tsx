@@ -26,6 +26,14 @@ const STREAM_PATH = '/dsh-browser/stream'
 /** Milliseconds between forwarded pointer moves, so a drag does not flood the socket. */
 const MOVE_INTERVAL_MS = 33
 
+/**
+ * Milliseconds between viewport reports while the stage is resizing.
+ *
+ * Short enough that a dragged Sidebar edge tracks the page, long enough that
+ * every animation frame is not a browser resize.
+ */
+const RESIZE_PACE_MS = 80
+
 /** What the viewer knows about the browser it mirrors. */
 interface MirrorStatus {
   readonly state: 'idle' | 'starting' | 'ready' | 'failed' | 'closed'
@@ -315,6 +323,14 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
    */
   const resizeRefusedRef = useRef(false)
   const socketRef = useRef<WebSocket | undefined>(undefined)
+  /**
+   * A navigate typed while the mirror socket was down.
+   *
+   * The address bar is usable before the socket is: a pane that is still
+   * connecting would otherwise swallow what the user typed. It is sent the
+   * moment the socket opens, and only the last one is kept.
+   */
+  const pendingNavigateRef = useRef<string | undefined>(undefined)
   const lastMoveRef = useRef(0)
   const pasteSinkRef = useRef<HTMLTextAreaElement | null>(null)
   /**
@@ -348,56 +364,96 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
   }, [])
 
   useEffect(() => {
-    const query: Record<string, string> = { session: sessionId }
-    // A tab names its page; the socket is bound to that page, so its frames,
-    // its input, and its address bar are the page's whether or not the tools
-    // act on it right now.
-    if (pageId !== undefined) query.page = pageId
+    // The page this socket asks for. It starts as the page the tab named, and
+    // falls back to the browser's active page once the host says that page is
+    // gone — a pane that kept naming a closed page would reconnect into the
+    // same refusal forever.
+    let asked: string | undefined = pageId
+    let attempt = 0
+    let retry: ReturnType<typeof setTimeout> | undefined
+    let disposed = false
     // A pane with no page is the browser entry's own: it exists to hold the page
     // this ask produces, so it asks for one. This is the only thing that opens a
     // page on the user's behalf — a browser already running gets a tab of its
     // own here rather than the one that is already there.
-    if (pageId === undefined && tabId !== undefined) {
-      void openPageRequest(sessionId, tabId).catch(() => {})
+    const openOwnPage = (): void => {
+      if (pageId === undefined && tabId !== undefined) void openPageRequest(sessionId, tabId).catch(() => {})
     }
-    const socket = new WebSocket(streamUrl(STREAM_PATH, query))
-    socket.binaryType = 'arraybuffer'
-    socket.onopen = () => { setConnected(true) }
-    socket.onclose = () => { setConnected(false) }
-    socket.onerror = () => { setConnected(false) }
-    socket.onmessage = (event: MessageEvent<string | ArrayBuffer>) => {
-      if (typeof event.data !== 'string') {
-        void drawFrame(event.data)
-        return
+    openOwnPage()
+    const connect = (): void => {
+      const query: Record<string, string> = { session: sessionId }
+      // A tab names its page; the socket is bound to that page, so its frames,
+      // its input, and its address bar are the page's whether or not the tools
+      // act on it right now.
+      if (asked !== undefined) query.page = asked
+      const socket = new WebSocket(streamUrl(STREAM_PATH, query))
+      socket.binaryType = 'arraybuffer'
+      socket.onopen = () => {
+        attempt = 0
+        setConnected(true)
+        // A navigate asked for while the socket was down never left; it goes now
+        // that there is somewhere to send it.
+        const pending = pendingNavigateRef.current
+        if (pending !== undefined) {
+          pendingNavigateRef.current = undefined
+          socket.send(JSON.stringify({ type: 'navigate', url: pending }))
+        }
       }
-      const parsed = JSON.parse(event.data) as { type?: string; status?: MirrorStatus; message?: unknown; text?: unknown }
-      if (parsed.type === 'status' && parsed.status !== undefined) {
-        setStatus(parsed.status)
-        setFailure(undefined)
-        // A browser that just (re)started has the launch viewport again, so the
-        // pane's unchanged size is still worth re-sending.
-        reportSizeRef.current?.(true)
-        return
+      socket.onclose = () => {
+        setConnected(false)
+        if (disposed) return
+        // A dropped socket is not the end of the pane: the host may have
+        // restarted, or the page this pane named may have been closed. Retry
+        // with backoff, and after the first refusal stop naming the page so the
+        // pane adopts the browser's active one instead of asking for one that
+        // is gone.
+        attempt += 1
+        if (attempt >= 2 && asked !== undefined) {
+          asked = undefined
+          openOwnPage()
+        }
+        const delay = Math.min(5_000, 250 * 2 ** Math.min(attempt, 4))
+        retry = setTimeout(connect, delay)
       }
-      // A refused action is otherwise invisible: the status the viewer holds is
-      // unchanged, so the failure is what explains why nothing moved.
-      if (parsed.type === 'error') {
-        const message = String(parsed.message)
-        if (message.includes('unknown viewer message "resize"')) resizeRefusedRef.current = true
-        else setFailure(message)
+      socket.onerror = () => { setConnected(false) }
+      socket.onmessage = (event: MessageEvent<string | ArrayBuffer>) => {
+        if (typeof event.data !== 'string') {
+          void drawFrame(event.data)
+          return
+        }
+        const parsed = JSON.parse(event.data) as { type?: string; status?: MirrorStatus; message?: unknown; text?: unknown }
+        if (parsed.type === 'status' && parsed.status !== undefined) {
+          setStatus(parsed.status)
+          setFailure(undefined)
+          // A browser that just (re)started has the launch viewport again, so the
+          // pane's unchanged size is still worth re-sending.
+          reportSizeRef.current?.(true)
+          return
+        }
+        // A refused action is otherwise invisible: the status the viewer holds is
+        // unchanged, so the failure is what explains why nothing moved.
+        if (parsed.type === 'error') {
+          const message = String(parsed.message)
+          if (message.includes('unknown viewer message "resize"')) resizeRefusedRef.current = true
+          else setFailure(message)
+        }
+        // The mirror's selection, on its way back from the host. It is spent at
+        // once and can only be spent once: it belongs to the chord that asked.
+        if (parsed.type === 'clipboard') {
+          const settle = clipboardRef.current
+          clipboardRef.current = undefined
+          settle?.(String(parsed.text ?? ''))
+        }
       }
-      // The mirror's selection, on its way back from the host. It is spent at
-      // once and can only be spent once: it belongs to the chord that asked.
-      if (parsed.type === 'clipboard') {
-        const settle = clipboardRef.current
-        clipboardRef.current = undefined
-        settle?.(String(parsed.text ?? ''))
-      }
+      socketRef.current = socket
     }
-    socketRef.current = socket
+    connect()
     return () => {
+      disposed = true
+      if (retry !== undefined) clearTimeout(retry)
+      const socket = socketRef.current
       socketRef.current = undefined
-      socket.close()
+      socket?.close()
     }
   }, [drawFrame, sessionId, pageId, tabId])
 
@@ -433,14 +489,18 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
    * page in a tall Sidebar leaves two black bands. Reporting the stage size lets
    * the host set the page viewport to it, and the frame then fills the stage.
    *
-   * Reported on connect and whenever the stage resizes; the debounce is what
-   * keeps a dragged sidebar edge from resizing the browser on every frame.
+   * Reported on connect and whenever the stage resizes. Reports are paced
+   * rather than debounced: a dragged sidebar edge updates the viewport while it
+   * moves, so the letterbox lasts one pace interval instead of the whole drag
+   * plus a settling delay. The pace is what keeps every frame of a drag from
+   * resizing the browser — each resize reflows the page being watched.
    */
   useEffect(() => {
     const stage = stageRef.current
     if (stage === null || !connected) return
     let timer: ReturnType<typeof setTimeout> | undefined
     let last = ''
+    let sentAt = 0
     const report = (force = false): void => {
       if (resizeRefusedRef.current) return
       const width = Math.round(stage.clientWidth)
@@ -449,13 +509,18 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
       const key = `${width}x${height}`
       if (!force && key === last) return
       last = key
+      sentAt = Date.now()
       send({ type: 'resize', width, height })
     }
     report()
     reportSizeRef.current = report
     const observer = new ResizeObserver(() => {
-      if (timer !== undefined) clearTimeout(timer)
-      timer = setTimeout(report, 200)
+      if (timer !== undefined) return
+      const wait = Math.max(0, RESIZE_PACE_MS - (Date.now() - sentAt))
+      timer = setTimeout(() => {
+        timer = undefined
+        report()
+      }, wait)
     })
     observer.observe(stage)
     return () => {
@@ -490,7 +555,16 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
    */
   const submit = useCallback((): void => {
     const target = address.trim()
-    if (target !== '') send({ type: 'navigate', url: target })
+    if (target === '') return
+    const socket = socketRef.current
+    // The address bar works before the mirror does: a pane that is still
+    // connecting keeps what was typed and sends it when the socket opens,
+    // instead of dropping it into a dead socket.
+    if (socket === undefined || socket.readyState !== WebSocket.OPEN) {
+      pendingNavigateRef.current = target
+      return
+    }
+    send({ type: 'navigate', url: target })
   }, [address, send])
 
   const state = status?.state

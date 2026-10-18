@@ -143,7 +143,8 @@ Restart the harness afterwards. Removal does not delete `userDataDir`, which hol
 | An edit to `lib/index.js` (the host half) has no effect | Node's ESM cache never re-executes an imported module | Restart the host. The client half differs: `lib/client.js` is hot-reloaded by `dsh-client-hmr`, usually without a refresh |
 | The pane stays on a blank page | No browser is running, it crashed, or the CDP port window is exhausted | `browser_tabs` starts one; read `/dsh-browser/status`; widen `debugPortMin`/`debugPortMax` when every port in the window is taken |
 | `browser_click` is refused because "…would receive the press" | Another element covers the target — a menu, a modal, a sticky header | Close it, or pass `force: true`, which sends the press anyway and reports `obstructed` |
-| The page is drawn small with background bands around it | A build before v0.2.4 pinned the mirrored viewport to 1000×1240 instead of the pane's size | Upgrade to v0.2.4 or later: the pane reports its own size and the viewport follows it |
+| The page is drawn small with background bands around it | The frame on screen is older than the pane: the pane is disconnected, so its size reports stopped and the letterbox comes from the last frame | Upgrade to v0.2.5: the pane reconnects on its own, and a pane that named a page that went away adopts the browser's active one |
+| The pane sits on "connecting to the mirror…" forever | A build before v0.2.5 opened the mirror socket once and never retried; a host restart, or a page the pane named that was closed, left it dead | Upgrade to v0.2.5 and refresh the page once |
 | Chrome or Edge cannot be found | The `channel` lookup missed the installation | Install Chrome or Edge, or set `executablePath` on the settings page to its absolute path |
 | A tool call fails with `no session` | The caller has no session of its own — a scheduled job or a subagent | By design; run it from a conversation |
 
