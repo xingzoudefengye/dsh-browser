@@ -10,6 +10,8 @@ English | [中文](README.zh.md)
 
 **A real local browser for every conversation.** The agent opens pages and works in them while the sidebar mirrors the same browser, so you can watch the work happen and take over whenever you want. It runs in both the Web and the Desktop interface.
 
+> **This is a fork.** Upstream is [CJYLZS/dsh-browser](https://github.com/CJYLZS/dsh-browser) (MIT); this repository is [xingzoudefengye](https://github.com/xingzoudefengye)'s fork of it. It adds one thing upstream does not have yet: **the sidebar reports its own size**, so the mirrored viewport follows the pane instead of a fixed 1000×1240 — no letterbox bands, and dragging the sidebar resizes the page live (`v0.2.4`, three commits: report the size, re-report after a browser restart, and ignore the message on a host that predates it). Every install command below points at **this** repository.
+
 ## Summary
 
 Chrome or Edge runs as its own process, with its own profile and its own CDP port, and every conversation gets its own: tabs, sign-ins, and ports are never shared between conversations. The agent drives it with nine tools, and the sidebar shows the same pages — either side can act on them.
@@ -59,13 +61,13 @@ Then install with the `#<tag>` ref that version pairs with — a build targets o
 
 | Your dsh | Plugin version | Install command |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.4 (latest) | `dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4` |
-| 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.1.0` |
+| ≥ 0.1.7-rc.1 | v0.2.4 (latest) | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.4` |
+| 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.1.0` |
 
 For a dsh on the current generation, the latest release is:
 
 ```sh
-dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4
+dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.4
 ```
 
 The built `lib/` is committed with each tag, so a tag install needs no build step. The profile's `package.json` records the ref you chose; to change versions, re-add with the new ref, and to remove the plugin use `dsh plugin --profile web remove dsh-browser`. Restart the harness after installing. A Chrome or Edge installation is required; `playwright-core` is a dependency and downloads no browser of its own.
@@ -89,7 +91,7 @@ Either way, you need:
 The Desktop app owns its own profile, and the ordinary CLI refuses to manage `--profile desktop` on purpose, so install through the Desktop CLI that ships with the app:
 
 ```sh
-"<Desktop install dir>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:CJYLZS/dsh-browser#v0.2.4
+"<Desktop install dir>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:xingzoudefengye/dsh-browser#v0.2.4
 ```
 
 Use `<Desktop install dir>/resources/runtime/cli/bin/dsh` on macOS and Linux. Restart the app afterwards, the same way the Web profile restarts after `dsh plugin add`; the same `remove` verb uninstalls it.
@@ -281,7 +283,7 @@ None is bundled. `lib/index.js` imports `playwright-core` (Apache-2.0) and `ws` 
 <a id="related"></a>
 ## Related plugins
 
-Same author, same install shape (`dsh plugin --profile web add github:CJYLZS/<repo>`):
+Same author, same install shape (`dsh plugin --profile web add github:xingzoudefengye/<repo>`):
 
 - [dsh-web-search-failover](https://github.com/xingzoudefengye/dsh-web-search-failover) — ordered web-search failover across backends
 - [dsh-compaction-local-handoff](https://github.com/xingzoudefengye/dsh-compaction-local-handoff) — model-free local-handoff compaction

@@ -10,6 +10,8 @@
 
 **每个对话一台真实的本机浏览器。** agent 在里面开页面、做事，侧栏镜像同一台浏览器，你能看着它工作，也能随时自己上手。Web 界面与 Desktop 应用都能用。
 
+> **这是 fork。** 上游是 [CJYLZS/dsh-browser](https://github.com/CJYLZS/dsh-browser)（MIT），本仓库是 [xingzoudefengye](https://github.com/xingzoudefengye) 的 fork。它比上游多一件事：**侧栏把自身尺寸报给 host**，镜像视口跟着侧栏走，而不是钉在 1000×1240 —— 没有 letterbox 黑边，拖动侧栏时页面实时跟着变（`v0.2.4`，三个提交：上报尺寸、浏览器重启后重报、旧 host 不认识这条消息时不覆盖画面）。下面的安装命令全部指向**本仓库**。
+
 ## 概述
 
 Chrome 或 Edge 以独立进程运行，有自己的 profile、自己的 CDP 端口，而且每个对话各有一台：标签、登录态、端口都不跨对话共享。agent 用九个工具驱动它，侧栏显示的是同一批页面——两边都能操作。
@@ -59,13 +61,13 @@ dsh -V
 
 | 你的 dsh | 插件版本 | 安装命令 |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.4（最新） | `dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4` |
-| 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.1.0` |
+| ≥ 0.1.7-rc.1 | v0.2.4（最新） | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.4` |
+| 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.1.0` |
 
 属于当前世代的 dsh，装最新版就是这条：
 
 ```sh
-dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4
+dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.4
 ```
 
 构建产物 `lib/` 随每个 tag 提交，所以按 tag 安装不需要构建。profile 的 `package.json` 会记下你选的 ref；换版本就用新 ref 重新 add，移除插件用 `dsh plugin --profile web remove dsh-browser`。装完都要重启 harness。机器上需要已安装 Chrome 或 Edge；`playwright-core` 是运行依赖，它自己不会下载浏览器。
@@ -89,7 +91,7 @@ dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4
 Desktop 应用自己拥有它的 profile，而普通 CLI 有意拒绝管理 `--profile desktop`，所以走随应用一起发布的 Desktop CLI：
 
 ```sh
-"<Desktop 安装目录>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:CJYLZS/dsh-browser#v0.2.4
+"<Desktop 安装目录>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:xingzoudefengye/dsh-browser#v0.2.4
 ```
 
 macOS 与 Linux 用 `<Desktop 安装目录>/resources/runtime/cli/bin/dsh`。装完重启应用，和 Web profile 用 `dsh plugin add` 之后一样；卸载用同一个 `remove`。
@@ -281,7 +283,7 @@ dsh plugin --profile web add link:/absolute/path/to/dsh-browser
 <a id="related"></a>
 ## 相关插件
 
-同作者、同样的安装方式（`dsh plugin --profile web add github:CJYLZS/<repo>`）：
+同作者、同样的安装方式（`dsh plugin --profile web add github:xingzoudefengye/<repo>`）：
 
 - [dsh-web-search-failover](https://github.com/xingzoudefengye/dsh-web-search-failover) — 按顺序尝试多个搜索后端的故障转移
 - [dsh-compaction-local-handoff](https://github.com/xingzoudefengye/dsh-compaction-local-handoff) — 无模型的本地交接式压缩
