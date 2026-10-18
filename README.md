@@ -4,10 +4,6 @@ English | [中文](README.zh.md)
 
 <img src="docs/img/preview_en.png" alt="The plugin at work: the agent's browser tool calls beside the same browser mirrored in the sidebar" width="100%">
 
-<p align="center">
-  <img src="docs/img/settings_en.png" alt="The browser settings: one running instance per conversation with its own CDP port, window mode, automation markers, and profile location" width="45%">
-</p>
-
 **A real local browser for every conversation.** The agent opens pages and works in them while the sidebar mirrors the same browser, so you can watch the work happen and take over whenever you want. It runs in both the Web and the Desktop interface.
 
 > **This is a fork.** Upstream is [CJYLZS/dsh-browser](https://github.com/CJYLZS/dsh-browser) (MIT); this repository is [xingzoudefengye](https://github.com/xingzoudefengye)'s fork of it. It adds one thing upstream does not have yet: **the sidebar reports its own size**, so the mirrored viewport follows the pane instead of a fixed 1000×1240 — no letterbox bands, and dragging the sidebar resizes the page live (`v0.2.4`, three commits: report the size, re-report after a browser restart, and ignore the message on a host that predates it). Every install command below points at **this** repository.
