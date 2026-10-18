@@ -5,7 +5,7 @@
 <img src="docs/img/preview_zh.png" alt="插件在工作：左侧是 agent 的浏览器工具调用，右侧栏镜像着同一台浏览器" width="100%">
 
 <p align="center">
-  <img src="docs/img/settings_zh.png" alt="浏览器设置：每个对话一个正在运行的实例，各有自己的 CDP 端口，另含窗口模式、自动化标记与 profile 位置" width="45%">
+  <img src="docs/img/settings_zh.png" alt="浏览器设置：每个对话一个正在运行的实例，各有自己的 CDP 端口，另含窗口模式与登录数据位置" width="45%">
 </p>
 
 **每个对话一台真实的本机浏览器。** agent 在里面开页面、做事，侧栏镜像同一台浏览器，你能看着它工作，也能随时自己上手。Web 界面与 Desktop 应用都能用。
@@ -14,7 +14,7 @@
 
 ## 概述
 
-Chrome 或 Edge 以独立进程运行，有自己的 profile、自己的 CDP 端口，而且每个对话各有一台：标签、登录态、端口都不跨对话共享。agent 用九个工具驱动它，侧栏显示的是同一批页面——两边都能操作。
+Chrome 或 Edge 以独立进程运行，有自己的登录数据、自己的 CDP 端口，而且每个对话各有一台：标签、登录态、端口都不跨对话共享。agent 用九个工具驱动它，侧栏显示的是同一批页面——两边都能操作。
 
 它不是内嵌的网页视图。页面跑在一个普通浏览器进程里，所以站点看到的是正常浏览器，镜像运行时 DevTools 或另一个 Playwright 可以附加进来，关掉 harness 也不会留下一个假装属于界面的浏览器进程。
 
@@ -61,13 +61,13 @@ dsh -V
 
 | 你的 dsh | 插件版本 | 安装命令 |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.4（最新） | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.4` |
+| ≥ 0.1.7-rc.1 | v0.2.9（最新） | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.9` |
 | 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.1.0` |
 
 属于当前世代的 dsh，装最新版就是这条：
 
 ```sh
-dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.4
+dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.9
 ```
 
 构建产物 `lib/` 随每个 tag 提交，所以按 tag 安装不需要构建。profile 的 `package.json` 会记下你选的 ref；换版本就用新 ref 重新 add，移除插件用 `dsh plugin --profile web remove dsh-browser`。装完都要重启 harness。机器上需要已安装 Chrome 或 Edge；`playwright-core` 是运行依赖，它自己不会下载浏览器。
@@ -91,7 +91,7 @@ dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.4
 Desktop 应用自己拥有它的 profile，而普通 CLI 有意拒绝管理 `--profile desktop`，所以走随应用一起发布的 Desktop CLI：
 
 ```sh
-"<Desktop 安装目录>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:xingzoudefengye/dsh-browser#v0.2.4
+"<Desktop 安装目录>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:xingzoudefengye/dsh-browser#v0.2.9
 ```
 
 macOS 与 Linux 用 `<Desktop 安装目录>/resources/runtime/cli/bin/dsh`。装完重启应用，和 Web profile 用 `dsh plugin add` 之后一样；卸载用同一个 `remove`。
