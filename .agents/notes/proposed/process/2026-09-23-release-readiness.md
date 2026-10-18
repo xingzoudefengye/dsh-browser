@@ -8,7 +8,7 @@ Status: proposed
 
 ## Proposal
 
-- **发布形式**：跟 `dsh-remote-development` 一样走 GitHub 安装（`dsh plugin add --profile web github:CJYLZS/dsh-browser`），还是发到 npm。
+- **发布形式**：跟 `dsh-remote-development` 一样走 GitHub 安装（`dsh plugin --profile web add github:CJYLZS/dsh-browser`），还是发到 npm。
 - **0.1.7 适配**：各包版本不同步（`dsh-tools` 等已有 `0.1.7-rc.1`，客户端包只到 `0.1.7-alpha.2`），必须逐包选版本；peer 区间要显式扩成 `^0.1.5-rc.2 || ^0.1.7-alpha.2`，否则带预发布标签的范围不覆盖另一个 `major.minor.patch` 的预发布版。
 - **跨平台**：整个开发都在 Windows 上，macOS / Linux 一次没跑过（`channel: 'chrome'` 的查找、临时目录、进程回收）。先只声明 Windows，还是进 v1 就要求跨平台。
 - **长期 profile 的粒度**：按会话（当前实现）还是全局一份——后者会让登录态跨会话共享，与"真实隔离"矛盾。

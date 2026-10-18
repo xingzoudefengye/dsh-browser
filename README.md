@@ -59,16 +59,16 @@ Then install with the `#<tag>` ref that version pairs with — a build targets o
 
 | Your dsh | Plugin version | Install command |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.4 (latest) | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.4` |
-| 0.1.5-rc.2 | v0.1.x | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.1.0` |
+| ≥ 0.1.7-rc.1 | v0.2.4 (latest) | `dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4` |
+| 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.1.0` |
 
 For a dsh on the current generation, the latest release is:
 
 ```sh
-dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.4
+dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4
 ```
 
-The built `lib/` is committed with each tag, so a tag install needs no build step. The profile's `package.json` records the ref you chose; to change versions, re-add with the new ref, and to remove the plugin use `dsh plugin remove --profile web dsh-browser`. Restart the harness after installing. A Chrome or Edge installation is required; `playwright-core` is a dependency and downloads no browser of its own.
+The built `lib/` is committed with each tag, so a tag install needs no build step. The profile's `package.json` records the ref you chose; to change versions, re-add with the new ref, and to remove the plugin use `dsh plugin --profile web remove dsh-browser`. Restart the harness after installing. A Chrome or Edge installation is required; `playwright-core` is a dependency and downloads no browser of its own.
 
 ### Platform
 
@@ -128,7 +128,7 @@ A running browser answers `GET /dsh-browser/status` on the host origin, and from
 ### Uninstall
 
 ```sh
-dsh plugin remove --profile web dsh-browser
+dsh plugin --profile web remove dsh-browser
 ```
 
 Restart the harness afterwards. Removal does not delete `userDataDir`, which holds one browser profile subdirectory per session — delete that yourself if its sign-ins should go too.
@@ -262,7 +262,7 @@ To run a local checkout instead of a tag, link it into the profile — later `pn
 cd dsh-browser
 pnpm install          # self-contained workspace; store lives in .pnpm-store/
 pnpm run build        # emits lib/index.js (host) and lib/client.js (browser)
-dsh plugin add --profile web link:/absolute/path/to/dsh-browser
+dsh plugin --profile web add link:/absolute/path/to/dsh-browser
 ```
 
 Commands: `pnpm run build` (tsdown, both halves), `pnpm run typecheck`, `pnpm test`, and the measurement rigs in `scripts/` (`prove.mjs` for the CDP port, screen cast, input dispatch, and screenshot; `modes.mjs` for headless/windowed/minimized; `cdp.mjs` to read or drive a running browser over its external port, with `--port=` to pick a session's).
@@ -281,7 +281,7 @@ None is bundled. `lib/index.js` imports `playwright-core` (Apache-2.0) and `ws` 
 <a id="related"></a>
 ## Related plugins
 
-Same author, same install shape (`dsh plugin add --profile web github:CJYLZS/<repo>`):
+Same author, same install shape (`dsh plugin --profile web add github:CJYLZS/<repo>`):
 
 - [dsh-web-search-failover](https://github.com/xingzoudefengye/dsh-web-search-failover) — ordered web-search failover across backends
 - [dsh-compaction-local-handoff](https://github.com/xingzoudefengye/dsh-compaction-local-handoff) — model-free local-handoff compaction

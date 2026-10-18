@@ -31,7 +31,7 @@ agent 要用上本机的真实浏览器，用户还要能看见它在做什么�
 | 工具 | `ctx.tools.register(defineTool({...}))` | `docs/cookbook/adding-a-tool.md` |
 | 生命周期 | `ctx.on('agent/disposed')` / `'session/disposed'` | `packages/core/session/src/index.ts:63` |
 | 外部插件骨架 | 自带 pnpm workspace、tsdown 双构建、`dsh.bundle.patch`、`dsh.client.inject` | 模板 `lib/dsh-remote-development` |
-| 安装 | `dsh plugin add --profile web link:<绝对路径>`，`pnpm run build` 后重启生效 | 同上 README |
+| 安装 | `dsh plugin --profile web add link:<绝对路径>`，`pnpm run build` 后重启生效 | 同上 README |
 
 ## 包结构
 
@@ -83,7 +83,7 @@ lib/dsh-browser/
 
 ## M1 验证
 
-1. `pnpm install && pnpm run build` → `dsh plugin add --profile web link:D:/code/deepseek-harness/lib/dsh-browser` → 重启 harness。
+1. `pnpm install && pnpm run build` → `dsh plugin --profile web add link:D:/code/deepseek-harness/lib/dsh-browser` → 重启 harness。
 2. 右栏新建 browser tab，确认画面出现。
 3. 在真实窗口点链接，确认侧栏同步；在侧栏 canvas 点击/输入，确认真实窗口响应。
 4. **遮挡场景实测**：把 DSH 网页盖到 Chrome 上方，确认画面仍在刷新（验证 anti-occlusion 参数生效）。

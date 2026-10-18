@@ -49,7 +49,7 @@ headless 下 screencast 稳定 20fps、`Input.dispatch*` 生效、帧内容经�
 
 ## M1 已完成并在真实 UI 里验证
 
-代码在 `src/`（host：config / browser/{launch,manager,screencast,input} / view/server / tools / index；client：definition / view / locales / index），`pnpm install && pnpm run build` 后经 `dsh plugin add --profile web link:...` 装入 web profile，重启 harness 生效。
+代码在 `src/`（host：config / browser/{launch,manager,screencast,input} / view/server / tools / index；client：definition / view / locales / index），`pnpm install && pnpm run build` 后经 `dsh plugin --profile web add link:...` 装入 web profile，重启 harness 生效。
 
 验证链路（全部在真实 UI 里跑通）：
 

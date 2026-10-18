@@ -59,16 +59,16 @@ dsh -V
 
 | 你的 dsh | 插件版本 | 安装命令 |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.4（最新） | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.4` |
-| 0.1.5-rc.2 | v0.1.x | `dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.1.0` |
+| ≥ 0.1.7-rc.1 | v0.2.4（最新） | `dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4` |
+| 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.1.0` |
 
 属于当前世代的 dsh，装最新版就是这条：
 
 ```sh
-dsh plugin add --profile web github:CJYLZS/dsh-browser#v0.2.4
+dsh plugin --profile web add github:CJYLZS/dsh-browser#v0.2.4
 ```
 
-构建产物 `lib/` 随每个 tag 提交，所以按 tag 安装不需要构建。profile 的 `package.json` 会记下你选的 ref；换版本就用新 ref 重新 add，移除插件用 `dsh plugin remove --profile web dsh-browser`。装完都要重启 harness。机器上需要已安装 Chrome 或 Edge；`playwright-core` 是运行依赖，它自己不会下载浏览器。
+构建产物 `lib/` 随每个 tag 提交，所以按 tag 安装不需要构建。profile 的 `package.json` 会记下你选的 ref；换版本就用新 ref 重新 add，移除插件用 `dsh plugin --profile web remove dsh-browser`。装完都要重启 harness。机器上需要已安装 Chrome 或 Edge；`playwright-core` 是运行依赖，它自己不会下载浏览器。
 
 ### 平台
 
@@ -128,7 +128,7 @@ dsh --profile web --dump-config | Select-String -Pattern "dsh-browser|cdpBrowser
 ### 卸载
 
 ```sh
-dsh plugin remove --profile web dsh-browser
+dsh plugin --profile web remove dsh-browser
 ```
 
 之后重启 harness。卸载**不会**删除 `userDataDir` —— 它存着每个会话一个浏览器 profile 子目录，要清掉登录态得自己删。
@@ -262,7 +262,7 @@ dsh plugin remove --profile web dsh-browser
 cd dsh-browser
 pnpm install          # 自包含 workspace；store 在 .pnpm-store/
 pnpm run build        # 产出 lib/index.js（host）与 lib/client.js（浏览器端）
-dsh plugin add --profile web link:/absolute/path/to/dsh-browser
+dsh plugin --profile web add link:/absolute/path/to/dsh-browser
 ```
 
 命令：`pnpm run build`（tsdown，两半都产出）、`pnpm run typecheck`、`pnpm test`，以及 `scripts/` 下的实测脚本（`prove.mjs` 验证 CDP 端口、screencast、输入派发与截图；`modes.mjs` 对照无头/带窗口/最小化；`cdp.mjs` 通过对外端口读写一台运行中的浏览器，用 `--port=` 指定某个会话的）。
@@ -281,7 +281,7 @@ dsh plugin add --profile web link:/absolute/path/to/dsh-browser
 <a id="related"></a>
 ## 相关插件
 
-同作者、同样的安装方式（`dsh plugin add --profile web github:CJYLZS/<repo>`）：
+同作者、同样的安装方式（`dsh plugin --profile web add github:CJYLZS/<repo>`）：
 
 - [dsh-web-search-failover](https://github.com/xingzoudefengye/dsh-web-search-failover) — 按顺序尝试多个搜索后端的故障转移
 - [dsh-compaction-local-handoff](https://github.com/xingzoudefengye/dsh-compaction-local-handoff) — 无模型的本地交接式压缩
