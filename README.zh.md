@@ -76,8 +76,8 @@ dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.4
 
 | 平台 | 状态 | 说明 |
 | --- | --- | --- |
-| Windows 10/11 | **已验证** —— 唯一端到端跑过的平台 | profile 在 `%USERPROFILE%\.dsh`；Desktop 的 CLI 是 `dsh.cmd` |
-| macOS | **还没跑过** | 插件与浏览器都一样；profile 在 `~/.dsh`，Desktop 的 CLI 是应用包内的 `bin/dsh`。最可能出差异的是 `channel` 查找、临时目录和进程回收 |
+| Windows 10/11 | **已验证** —— 无头与有头都端到端跑过 | profile 在 `%USERPROFILE%\.dsh`；Desktop 的 CLI 是 `dsh.cmd` |
+| macOS | **v0.2.7 起已验证（有头模式）** —— 另一台 Mac 上发现并修掉了帧/面板尺寸不一致，即 v0.2.5–v0.2.7 | profile 在 `~/.dsh`，Desktop 的 CLI 是应用包内的 `bin/dsh`。Desktop 与无头模式在 macOS 上还没跑过；`channel` 查找、临时目录、进程回收仍是那里证据最少的部分 |
 | Linux | **还没跑过** | 同 macOS 的注意事项；另外要确保装了 Chrome 或 Edge 且能被找到 |
 
 无论哪个平台都需要：
@@ -143,7 +143,9 @@ dsh plugin --profile web remove dsh-browser
 | 改了 `lib/index.js`（host 半边）却没反应 | Node 的 ESM 缓存不会重新执行已 import 的模块 | 重启 host。客户端半边不同：`lib/client.js` 由 `dsh-client-hmr` 热替换，通常连刷新都不用 |
 | 侧栏一直白屏 | 浏览器没在跑、崩了，或者 CDP 端口窗口用尽 | 调一次 `browser_tabs` 会启动；看 `/dsh-browser/status`；窗口里没有空端口时放宽 `debugPortMin`/`debugPortMax` |
 | `browser_click` 被拒，说「…会接收这次按下」 | 目标被别的东西盖住了——菜单、模态框、吸顶导航 | 先关掉它，或者传 `force: true`：照样派发，并在回报里写 `obstructed` |
-| 页面画得很小，四周留背景 | v0.2.4 之前的构建把镜像视口钉在 1000×1240，而不是侧栏自己的尺寸 | 升到 v0.2.4 或更高：侧栏把自身尺寸报给 host，视口跟着它变 |
+| 页面画得很小，四周留背景 | 屏上的帧比面板旧：面板断开了，尺寸上报停了，letterbox 来自最后一帧 | 升到 v0.2.5：面板自己重连，指名页面消失后改用浏览器的活跃页 |
+| 连上了，但页面上下仍有黑边 | v0.2.7 之前的构建用 Playwright 改视口，它会连窗口一起调整；Chrome 窗口自带约 87px UI，镜像帧就比面板矮 | 升到 v0.2.7：面板尺寸以 CDP metrics override 直接设到渲染面，帧与面板严格一致 |
+| 侧栏一直停在「正在连接镜像…」 | v0.2.5 之前的构建只在挂载时建一次 socket，断开不重试；host 重启、或它指名的页面被关掉，就永久停住 | 升到 v0.2.5，然后刷新一次页面 |
 | 找不到 Chrome 或 Edge | `channel` 查找没命中 | 装上 Chrome/Edge，或在设置页把 `executablePath` 指到它的绝对路径 |
 | 工具调用报 `no session` | 调用方没有自己的会话——定时任务或子代理 | 这是有意的；从会话里发起 |
 
@@ -192,7 +194,7 @@ dsh plugin --profile web remove dsh-browser
 | `stealth` | `true` | 去掉 Playwright 启动的浏览器所带的两个标记：`navigator.webdriver`，以及无头时写成 `HeadlessChrome/…` 的 UA。 |
 | `userDataDir` | 空 | 每会话 profile 的父目录；留空则每台浏览器一个临时 profile，退出时删除。 |
 | `debugPortMin` / `debugPortMax` | `9333` / `9400` | 每会话 CDP 端口的分配范围；每台浏览器取其中最小的空闲端口。改动只影响**之后**启动的浏览器，正在跑的浏览器保留它已经持有的端口。 |
-| `viewportWidth` / `viewportHeight` | `1440` / `900` | 无头模式下的页面尺寸——无头没有真实窗口可取值。 |
+| `viewportWidth` / `viewportHeight` | `1440` / `900` | 页面的**初始**模拟视口，两种模式都用它。侧栏面板连上后会报自己的尺寸覆盖它；没有面板的浏览器、以及面板首次上报之前的头几帧，用的是这两个值。 |
 | `quality` | `70` | 镜像帧的 JPEG 质量。 |
 | `maxWidth` / `maxHeight` | `1600` / `1200` | 镜像帧的最大边长（设备像素）。 |
 | `everyNthFrame` | `1` | 每 N 帧镜像一帧。 |
@@ -233,7 +235,7 @@ dsh plugin --profile web remove dsh-browser
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与待办
 
-- **只在 Windows 上验证过。** macOS 与 Linux 一次没跑过：`channel` 的查找、临时目录、进程回收是最可能出差异的部分。
+- **Windows 上验证过；macOS 从 v0.2.7 起也验证过（有头模式）。** Linux 一次没跑过。在 macOS 上发现的两个缺陷都属于视口账目问题——镜像帧比面板矮——已在 v0.2.5–v0.2.7 修掉；`channel` 的查找、临时目录、进程回收在 macOS 上仍然是证据最少的部分，Desktop 与无头模式也还没在那里跑过。
 - **面板显示它自己的页面，浏览器自己开/关的页面只有插件被告知时才被跟随。** 插件得知的页面（工具调用、被驱动页面的 `window.open`）各有自己的标签与镜像；带窗口的浏览器用它自己的标签条切页时，各个镜像都停在原地，因为插件并不知情。
 - **侧栏里走 IME 的中文输入不工作。** 组合输入期间 `event.key` 是 `Process` 而不是字符，没有可转发的东西。非组合状态下，面板把可打印字符按文本发送、命名键按按键事件发送、带 Ctrl/Alt/Meta（或 Shift）的按键按它本来的组合键发送——所以 `Ctrl+A` 是选中页面而不是往页面里插一个 "a"；AltGr 组合仍按文本发送，因为它在 Windows 上就是 Ctrl+Alt。粘贴与直接键入 ASCII 不受影响；agent 的 `browser_type` 也不受影响，它插入文本而不是重放按键。
 - **剪贴板快捷键由面板自己处理。** `Ctrl/Cmd+C`、`Ctrl/Cmd+X`、`Ctrl/Cmd+V` 在面板里可用：复制/剪切把**镜像页里的选区**写进你的系统剪贴板，粘贴把你的剪贴板文本发给镜像页（`Input.insertText`，不重放按键）。镜像页自己收不到这些按键——Chromium 把剪贴板快捷键放在浏览器进程，注入的按键事件到不了那里（实测页面连 `keydown` 都没有）——所以走的是面板这一侧，那里的按键是可信事件。只搬纯文本；页面里 JS 调 `navigator.clipboard.writeText`（站点自己的"复制"按钮）写的仍是浏览器进程内部那个剪贴板，headless 下不会到系统剪贴板。

@@ -76,8 +76,8 @@ The built `lib/` is committed with each tag, so a tag install needs no build ste
 
 | Platform | Status | What to expect |
 | --- | --- | --- |
-| Windows 10/11 | **verified** — the only platform run end to end | `%USERPROFILE%\.dsh` holds the profile; the Desktop CLI is `dsh.cmd` |
-| macOS | **not yet run** | Same plugin and same browser; the profile is `~/.dsh`, the Desktop CLI is `bin/dsh` inside the app bundle. The `channel` lookup, temporary directories, and process teardown are the parts most likely to differ |
+| Windows 10/11 | **verified** — headless and headful, end to end | `%USERPROFILE%\.dsh` holds the profile; the Desktop CLI is `dsh.cmd` |
+| macOS | **verified since v0.2.7 (headful)** — a second machine found the frame/pane size mismatch here, fixed in v0.2.5–v0.2.7 | Profile is `~/.dsh`, the Desktop CLI is `bin/dsh` inside the app bundle. Desktop and headless have not run on macOS, and the `channel` lookup, temporary directories, and process teardown still have the least evidence there |
 | Linux | **not yet run** | Same caveat as macOS, and a Chrome or Edge build has to be installed and discoverable |
 
 Either way, you need:
@@ -235,7 +235,7 @@ Screenshots are written to a file, and the path comes back so it is durable in t
 <a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
-- **Verified on Windows only.** macOS and Linux have not been run once: the `channel` lookup, temporary directories, and process teardown are the parts most likely to differ.
+- **Verified on Windows and, since v0.2.7, on macOS (headful).** Linux has not been run once. Both macOS-only defects were viewport accounting — the mirrored frame came out shorter than the pane — and are fixed in v0.2.5–v0.2.7. On macOS the `channel` lookup, temporary directories, and process teardown still have the least evidence, and neither Desktop nor headless has run there.
 - **The pane shows the page its tab names, and pages the browser opens on its own are followed only when the plugin is told about them.** A page the plugin learns of — a tool call, `window.open` from a page it drives — gets its own tab and its own mirror; a headful browser switched by its own tab strip keeps every mirror where it was, because the plugin is not told.
 - **IME composition does not work in the sidebar.** During composition `event.key` is `Process` rather than a character, so nothing sensible can be forwarded. Outside composition the pane sends printable characters as text, named keys as key events, and a keystroke held with Ctrl, Alt or Meta — or Shift — as the chord it is, so Ctrl+A selects the page instead of typing an "a"; AltGr combinations still go as text, which is what they are on Windows (Ctrl+Alt). Pasting and plain ASCII typing are unaffected. The agent's `browser_type` is unaffected too: it inserts text rather than replaying keys.
 - **The pane handles the clipboard shortcuts itself.** `Ctrl/Cmd+C`, `Ctrl/Cmd+X` and `Ctrl/Cmd+V` work in the pane: a copy or a cut puts the **mirrored page's selection** on your system clipboard, and a paste sends your clipboard text to the mirrored page (through `Input.insertText`, not by replaying keys). The page itself never receives those keystrokes — Chromium keeps the clipboard shortcuts in the browser process, where an injected key event does not go (measured: the page sees no `keydown` at all for them) — so this happens on the pane's side, where the keystroke is trusted. Plain text only; a page's own `navigator.clipboard.writeText` (a site's "copy" button) still writes the browser process's own clipboard, which in headless is not the system one.
