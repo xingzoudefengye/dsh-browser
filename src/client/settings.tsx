@@ -75,7 +75,7 @@ const styles: Readonly<Record<string, CSSProperties>> = {
     border: '0.5px solid var(--dsw-alias-border-l4)', borderRadius: 'var(--dsw-radius-md)',
     background: 'var(--dsw-alias-bg-layer-3)', color: 'var(--dsw-alias-label-primary)',
   },
-  reset: {
+  link: {
     border: 'none', background: 'none', padding: 0, font: 'inherit',
     fontSize: '12px', lineHeight: 1.5, color: 'var(--dsw-alias-label-secondary)', cursor: 'pointer',
   },
@@ -108,13 +108,18 @@ function unreachableField(field: never): ReactElement {
   throw new Error(`no control for ${String(field)}`)
 }
 
-/** One labelled control, with a reset affordance once the user layer holds the field. */
+/**
+ * One labelled control.
+ *
+ * No reset affordance: "reset" meant deleting the entry from the composition
+ * config, and the entries on this page are not always the defaults — `channel`
+ * is a platform expression here, so clearing it would silently fall back to
+ * Chrome on a machine that only has Edge. A page that writes configuration
+ * should not also offer a button that removes configuration it did not write.
+ */
 function Row(props: {
   readonly label: string
   readonly hint: string | undefined
-  readonly overridden: boolean
-  readonly resetLabel: string
-  readonly onReset: () => void
   readonly children: ReactNode
 }): ReactElement {
   return (
@@ -125,9 +130,6 @@ function Row(props: {
       </div>
       <div style={styles.control}>
         {props.children}
-        {props.overridden
-          ? <button type="button" style={styles.reset} onClick={props.onReset}>{props.resetLabel}</button>
-          : null}
       </div>
     </div>
   )
@@ -212,29 +214,10 @@ export function BrowserSettingsSection(
   const value = snapshot.value
   if (value === undefined) return <p style={styles.intro}>{t('settingsUnavailable')}</p>
 
-  const user = (typeof snapshot.user === 'object' && snapshot.user !== null ? snapshot.user : {}) as Record<string, unknown>
   const persistent = persistentChoice ?? value.userDataDir !== ''
-  /** A field the user layer holds, so clearing it restores the composed value. */
-  const owns = (field: keyof BrowserSettingsView): boolean => Object.hasOwn(user, field)
-  /** A field is overridden once the user layer holds it. */
-  const row = (
-    label: string,
-    field: keyof BrowserSettingsView,
-    control: ReactNode,
-    hint?: string,
-  ): ReactElement => (
-    <Row
-      label={label}
-      hint={hint}
-      overridden={owns(field)}
-      resetLabel={t('settingsReset')}
-      onReset={() => {
-        if (field === 'userDataDir') setPersistentChoice(undefined)
-        commit(form.unset(field))
-      }}
-    >
-      {control}
-    </Row>
+  /** One placed field as a labelled row. */
+  const row = (label: string, control: ReactNode, hint?: string): ReactElement => (
+    <Row label={label} hint={hint}>{control}</Row>
   )
 
   /** The control one placed field renders. */
@@ -381,7 +364,6 @@ export function BrowserSettingsSection(
     const copy = FIELD_COPY[placement.field]
     return row(
       t(copy.label),
-      placement.field,
       control(placement.field),
       copy.hint === undefined ? undefined : t(copy.hint),
     )
@@ -411,7 +393,7 @@ export function BrowserSettingsSection(
             </details>
           )}
         </div>
-        <button type="button" style={styles.reset} onClick={refresh}>{t('settingsRefresh')}</button>
+        <button type="button" style={styles.link} onClick={refresh}>{t('settingsRefresh')}</button>
       </div>
 
       {saveError !== undefined
@@ -423,7 +405,6 @@ export function BrowserSettingsSection(
         {persistent
           ? row(
               t(PROFILE_DIR_COPY.label),
-              'userDataDir',
               <input
                 style={styles.input}
                 value={value.userDataDir}

@@ -57,13 +57,13 @@ Then install with the `#<tag>` ref that version pairs with — a build targets o
 
 | Your dsh | Plugin version | Install command |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.9 (latest) | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.9` |
+| ≥ 0.1.7-rc.1 | v0.2.10 (latest) | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.10` |
 | 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.1.0` |
 
 For a dsh on the current generation, the latest release is:
 
 ```sh
-dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.9
+dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.10
 ```
 
 The built `lib/` is committed with each tag, so a tag install needs no build step. The profile's `package.json` records the ref you chose; to change versions, re-add with the new ref, and to remove the plugin use `dsh plugin --profile web remove dsh-browser`. Restart the harness after installing. A Chrome or Edge installation is required; `playwright-core` is a dependency and downloads no browser of its own.
@@ -87,7 +87,7 @@ Either way, you need:
 The Desktop app owns its own profile, and the ordinary CLI refuses to manage `--profile desktop` on purpose, so install through the Desktop CLI that ships with the app:
 
 ```sh
-"<Desktop install dir>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:xingzoudefengye/dsh-browser#v0.2.9
+"<Desktop install dir>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:xingzoudefengye/dsh-browser#v0.2.10
 ```
 
 Use `<Desktop install dir>/resources/runtime/cli/bin/dsh` on macOS and Linux. Restart the app afterwards, the same way the Web profile restarts after `dsh plugin add`; the same `remove` verb uninstalls it.
@@ -173,7 +173,7 @@ The plugin keys everything by the harness session id, and that one decision expl
 - **Clicks are computed, not guessed.** A click resolves its ref to a backend node id, scrolls the element into view, reads its content quad, and converts that from page coordinates to the viewport coordinates CDP dispatches input in. It then sends a move, a press, and a release, which is what makes the event trusted.
 - **A page is mirrored by its own tab.** The sidebar holds one tab per page the browser has open, addressed by the page's CDP target id, so two pages on the same address stay two tabs and a reloaded client re-attaches every tab to the page it was watching. A pane's frames, input, and address bar belong to its page, whether or not the tools are acting on it right now; a page the browser closes takes its tab with it, and closing a tab closes that page. **Every page the entry opens comes from one pick.** The page-less tab the browser entry opens asks the host for a page as it mounts — the ask is keyed by that tab record's own id, so a tab switched away and back, a Session change, or a client reload asks once — and the host opens one more page on a browser already running, or answers with the page a browser it started came up on. Which page the tools act on is `browser_tabs`'s `open`/`select`, independent of which pane the user is looking at.
 - **The plugin's own routes carry the trust check.** The viewer socket, the status route, and the page route (open and close) are served by this plugin, and the webserver's route path runs no authentication of its own, so each applies Connection's rejection (`isTrustedApiRequest` and browser authentication) before answering. An unauthenticated request to any of them is refused with 401.
-- **Settings are user overrides, not state.** The settings page writes to the harness settings document, and the `cordis.yml` entry stays the base layer beneath it; clearing a field removes the override. Every field changes how a browser is launched or encoded, so a write restarts the running browsers and the panes reconnect on their own.
+- **Settings are user overrides, not state.** The settings page writes to the harness settings document, and the `cordis.yml` entry stays the base layer beneath it; the page only writes — it never deletes an entry, so a field is restored by editing `cordis.yml`, not from the UI. Every field changes how a browser is launched or encoded, so a write restarts the running browsers and the panes reconnect on their own.
 
 -----
 

@@ -61,13 +61,13 @@ dsh -V
 
 | 你的 dsh | 插件版本 | 安装命令 |
 | --- | --- | --- |
-| ≥ 0.1.7-rc.1 | v0.2.9（最新） | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.9` |
+| ≥ 0.1.7-rc.1 | v0.2.10（最新） | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.10` |
 | 0.1.5-rc.2 | v0.1.x | `dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.1.0` |
 
 属于当前世代的 dsh，装最新版就是这条：
 
 ```sh
-dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.9
+dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.10
 ```
 
 构建产物 `lib/` 随每个 tag 提交，所以按 tag 安装不需要构建。profile 的 `package.json` 会记下你选的 ref；换版本就用新 ref 重新 add，移除插件用 `dsh plugin --profile web remove dsh-browser`。装完都要重启 harness。机器上需要已安装 Chrome 或 Edge；`playwright-core` 是运行依赖，它自己不会下载浏览器。
@@ -91,7 +91,7 @@ dsh plugin --profile web add github:xingzoudefengye/dsh-browser#v0.2.9
 Desktop 应用自己拥有它的 profile，而普通 CLI 有意拒绝管理 `--profile desktop`，所以走随应用一起发布的 Desktop CLI：
 
 ```sh
-"<Desktop 安装目录>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:xingzoudefengye/dsh-browser#v0.2.9
+"<Desktop 安装目录>/resources/runtime/cli/bin/dsh.cmd" plugin --profile desktop add github:xingzoudefengye/dsh-browser#v0.2.10
 ```
 
 macOS 与 Linux 用 `<Desktop 安装目录>/resources/runtime/cli/bin/dsh`。装完重启应用，和 Web profile 用 `dsh plugin add` 之后一样；卸载用同一个 `remove`。
@@ -177,7 +177,7 @@ dsh plugin --profile web remove dsh-browser
 - **点击是算出来的，不是猜的。** 一次点击把 ref 解析成 backend node id，把元素滚进视口，读它的 content quad，再把页面坐标换算成 CDP 派发输入所用的视口坐标；然后发出移动、按下、抬起三个事件——这正是它可信的原因。
 - **一个页面有自己的标签。** 侧栏里浏览器每开一个页面就有一个标签，用页面的 CDP target id 作地址，所以两个同址页面是两个标签，客户端重载后每个标签也还能接回它原来在看的页面。一个面板的画面、输入与地址栏都属于它自己的页面——无论工具此刻作用于哪一页；浏览器关掉一个页面，它的标签跟着走，关掉一个标签就是关掉那个页面。**入口的每一页都来自一次点击**：引导页入口开出的那个没有页面的标签，挂载时会向 host 要一个页面（幂等键是这条标签记录自己的 id，所以切走再切回、刷新客户端都不会多开），host 对已经跑起来的浏览器开新页、对没跑起来的浏览器用它启动时的页面作答；工具作用的那一页则由 `browser_tabs` 的 `open`/`select` 决定，与面板在看哪一页无关。
 - **插件自己的路由自带信任检查。** viewer socket、状态路由与页面路由（开页与关页）由本插件提供，而 webserver 的路由路径本身不做任何认证，所以每一条都在应答之前先走 Connection 的拒绝逻辑（`isTrustedApiRequest` 与浏览器认证）。未认证的请求会得到 401。
-- **设置是用户覆盖，不是状态。** 设置页写入 harness 的 settings 文档，`cordis.yml` 里的条目始终是它下面的基础层；清空某项即删除覆盖。每个字段都改变浏览器的启动或编码方式，所以一次写入会重启正在运行的浏览器，面板会自行重连。
+- **设置是用户覆盖，不是状态。** 设置页写入 harness 的 settings 文档，`cordis.yml` 里的条目始终是它下面的基础层；页面只写不删——要还原某一项就去 `cordis.yml` 改，界面上没有能删除配置的按钮。每个字段都改变浏览器的启动或编码方式，所以一次写入会重启正在运行的浏览器，面板会自行重连。
 
 -----
 
