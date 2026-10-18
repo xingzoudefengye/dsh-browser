@@ -297,6 +297,14 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   /** The box the canvas is fitted into, whose size the mirrored page takes. */
   const stageRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * Report the stage size now, set by the fit effect.
+   *
+   * A status message is also a cue: the browser behind the pane may have just
+   * (re)started with the launch viewport, and the pane's size has not changed
+   * since it was last reported — so the report is re-sent rather than skipped.
+   */
+  const reportSizeRef = useRef<((force?: boolean) => void) | undefined>(undefined)
   const socketRef = useRef<WebSocket | undefined>(undefined)
   const lastMoveRef = useRef(0)
   const pasteSinkRef = useRef<HTMLTextAreaElement | null>(null)
@@ -357,6 +365,9 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
       if (parsed.type === 'status' && parsed.status !== undefined) {
         setStatus(parsed.status)
         setFailure(undefined)
+        // A browser that just (re)started has the launch viewport again, so the
+        // pane's unchanged size is still worth re-sending.
+        reportSizeRef.current?.(true)
         return
       }
       // A refused action is otherwise invisible: the status the viewer holds is
@@ -417,16 +428,17 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
     if (stage === null || !connected) return
     let timer: ReturnType<typeof setTimeout> | undefined
     let last = ''
-    const report = (): void => {
+    const report = (force = false): void => {
       const width = Math.round(stage.clientWidth)
       const height = Math.round(stage.clientHeight)
       if (width < 120 || height < 120) return
       const key = `${width}x${height}`
-      if (key === last) return
+      if (!force && key === last) return
       last = key
       send({ type: 'resize', width, height })
     }
     report()
+    reportSizeRef.current = report
     const observer = new ResizeObserver(() => {
       if (timer !== undefined) clearTimeout(timer)
       timer = setTimeout(report, 200)
@@ -434,6 +446,7 @@ export function BrowserBody({ sessionId, t, useTabInfo }: BrowserBodyProps): Rea
     observer.observe(stage)
     return () => {
       observer.disconnect()
+      reportSizeRef.current = undefined
       if (timer !== undefined) clearTimeout(timer)
     }
   }, [connected, send])
