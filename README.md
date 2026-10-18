@@ -193,7 +193,7 @@ The settings section (Settings → Browser) edits the fields below and reports w
 | `stealth` | `true` | Remove the two markers a Playwright-started browser carries: `navigator.webdriver` and, headless, a user agent spelled `HeadlessChrome/…`. |
 | `userDataDir` | empty | Parent directory of the per-session profiles; empty means a temporary profile per browser, removed when it exits. |
 | `debugPortMin` / `debugPortMax` | `9333` / `9400` | Window the per-session CDP ports are allocated from; each browser takes the lowest free one. Changing it moves where the *next* browser listens and leaves running browsers on the ports they already hold. |
-| `viewportWidth` / `viewportHeight` | `1440` / `900` | Page size in headless mode, which has no window to take a size from. |
+| `viewportWidth` / `viewportHeight` | `1440` / `900` | The page's initial emulated viewport, in both modes. A connected Sidebar pane reports its own size and overrides it; these values are what a browser with no pane (and the first frames before a pane reports) uses. |
 | `quality` | `70` | JPEG quality of mirrored frames. |
 | `maxWidth` / `maxHeight` | `1600` / `1200` | Longest edge of a mirrored frame, in device pixels. |
 | `everyNthFrame` | `1` | Mirror every Nth composited frame. |

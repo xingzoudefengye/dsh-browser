@@ -117,14 +117,23 @@ export async function launchBrowser(
     // the CDP listener below gets: a browser that is not up by then is not
     // coming up.
     timeout: timeoutMs,
+    // An emulated viewport in both modes, never the window's own size.
+    //
     // Headless has no window to take a size from, and the virtual one it uses
     // is far smaller than a real page expects — measured at 764x485, which
-    // crops most sites. The configured viewport is what the page, the mirrored
-    // frames, and every screenshot are then measured against. Headful keeps
-    // the real window size the user is looking at.
-    viewport: config.headless
-      ? { width: config.viewportWidth, height: config.viewportHeight }
-      : null,
+    // crops most sites.
+    //
+    // Headful used to pass `null` and let the real window be the viewport.
+    // Measured on macOS: `page.setViewportSize` then sets an emulated layout
+    // viewport while the window stays as large as the OS allows it to be, so
+    // `innerWidth/innerHeight` reported 581x581 while `Page.startScreencast`
+    // could only capture a 581x494 surface. The mirrored frame came back
+    // shorter than the pane, and `object-fit: contain` drew it with black bands
+    // above and below — the pane's own size was right, the frames were not.
+    // With an emulated viewport the renderer surface follows the requested
+    // size exactly (measured 581x581, 705x1150, 469x1400 all match their
+    // frames), so the pane and the frame can never disagree.
+    viewport: { width: config.viewportWidth, height: config.viewportHeight },
     args,
     ...config.executablePath === '' ? { channel: config.channel } : { executablePath: config.executablePath },
   })
