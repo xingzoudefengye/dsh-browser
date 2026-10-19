@@ -132,6 +132,18 @@ export const FIELD_COPY: Record<keyof BrowserSettingsView, FieldCopy> = {
   snapshotIgnore: { label: 'settingsSnapshotIgnore', hint: 'settingsSnapshotIgnoreHint' },
 }
 
+/**
+ * The directory a persistent profile uses when the user does not name one.
+ *
+ * Choosing 「保留登录」 has to mean something on its own: the mode select cannot
+ * write "keep the sign-ins" without a directory, because the empty string is
+ * what selects a fresh temporary profile. So the page fills this in, which
+ * also answers the question the empty box used to ask — a user who wants to
+ * stay signed in has no reason to invent a path, and `~` is expanded by the
+ * host, so this spelling works on every platform.
+ */
+export const DEFAULT_PROFILE_DIR = '~/.dsh/browser-profiles'
+
 /** The row that continues the profile field once a directory is wanted. */
 export const PROFILE_DIR_COPY: FieldCopy = { label: 'settingsProfileDir', hint: 'settingsProfileDirHint' }
 

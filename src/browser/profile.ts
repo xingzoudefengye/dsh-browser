@@ -13,6 +13,7 @@
  * through, everything else becomes `~XXXX`, which is reversible and therefore
  * cannot merge two ids into one directory.
  */
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 /**
@@ -61,6 +62,23 @@ function hash(value: string): string {
     state = Math.imul(state ^ value.charCodeAt(index), 0x01000193) >>> 0
   }
   return state.toString(16).padStart(8, '0')
+}
+
+/**
+ * Expand a leading `~` in a configured directory.
+ *
+ * The settings page fills in `~/.dsh/browser-profiles` when 「保留登录」 is
+ * chosen, because a default that needs no typing is the only one a user who
+ * just wants to stay signed in can accept. Node's `join` does not expand `~`,
+ * so the host does it here — on every platform, including Windows, where the
+ * shell never would.
+ * @param path - the configured directory, possibly starting with `~`.
+ * @returns an absolute path; anything else is returned unchanged.
+ */
+export function expandHome(path: string): string {
+  if (path === '~') return homedir()
+  if (path.startsWith('~/') || path.startsWith('~\\')) return join(homedir(), path.slice(2))
+  return path
 }
 
 /**

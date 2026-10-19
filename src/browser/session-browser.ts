@@ -37,7 +37,7 @@ import {
 import { mergeFrameTrees, type FrameTree } from './frame-trees.ts'
 import { pageInfoFromMetrics, type PageInfo } from './page-info.ts'
 import { PortAllocator } from './ports.ts'
-import { profileDirFor } from './profile.ts'
+import { expandHome, profileDirFor } from './profile.ts'
 import {
   entryInTree,
   locateAmbiguousError,
@@ -4234,7 +4234,7 @@ export class SessionBrowser {
       this.port = await this.ports.allocate()
       const userDataDir = this.config.userDataDir === ''
         ? await mkdtemp(join(tmpdir(), 'dsh-browser-'))
-        : profileDirFor(this.config.userDataDir, this.sessionId)
+        : profileDirFor(expandHome(this.config.userDataDir), this.sessionId)
       if (this.config.userDataDir === '') this.temporaryProfile = userDataDir
       const launchConfig: LaunchConfig = { ...this.config, debugPort: this.port }
       const session = await this.launch(launchConfig, userDataDir)

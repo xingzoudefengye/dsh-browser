@@ -6,9 +6,11 @@
  * sessions sharing one profile directory would fail to launch the second time.
  */
 import assert from 'node:assert/strict'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { encodeSessionSegment, profileDirFor, SESSION_SEGMENT_MAX } from '../src/browser/profile.ts'
+import { encodeSessionSegment, expandHome, profileDirFor, SESSION_SEGMENT_MAX } from '../src/browser/profile.ts'
+import { DEFAULT_PROFILE_DIR } from '../src/client/settings-layout.ts'
 
 test('an ordinary id is its own directory name', () => {
   assert.equal(encodeSessionSegment('01J8Z4K2M3N4P5Q6R7S8T9V0W1'), '01J8Z4K2M3N4P5Q6R7S8T9V0W1')
@@ -52,4 +54,19 @@ test('the profile directory cannot escape its parent', () => {
     const resolved = profileDirFor(base, id)
     assert.equal(resolved.startsWith(`${base}/`) || resolved.startsWith(`${base}\\`), true, resolved)
   }
+})
+
+test('a configured directory may start with ~, which the host expands', () => {
+  assert.equal(expandHome('~'), homedir())
+  assert.equal(expandHome('~/profiles'), join(homedir(), 'profiles'))
+  assert.equal(expandHome('~\\profiles'), join(homedir(), 'profiles'))
+  // Anything else is already a path the caller meant literally.
+  assert.equal(expandHome('/var/tmp/profiles'), '/var/tmp/profiles')
+  assert.equal(expandHome('C:\\profiles'), 'C:\\profiles')
+})
+
+test('the directory the page fills in is one the host can expand', () => {
+  // The two halves are written apart: the page names a friendly default, the
+  // host turns it into a real path. This is what fails if either drifts.
+  assert.equal(expandHome(DEFAULT_PROFILE_DIR), join(homedir(), '.dsh', 'browser-profiles'))
 })

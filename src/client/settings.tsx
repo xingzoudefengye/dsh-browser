@@ -27,6 +27,7 @@ import { browserStatus, type ClientBrowserReport } from './api.ts'
 import {
   FIELD_COPY,
   FIELD_PLACEMENTS,
+  DEFAULT_PROFILE_DIR,
   PROFILE_DIR_COPY,
   instanceLine,
   statusLine,
@@ -154,6 +155,9 @@ export function BrowserSettingsSection(
   // Held above the early returns so the hook order never changes between the
   // loading, unavailable, and ready renders.
   const [persistentChoice, setPersistentChoice] = useState<boolean | undefined>(undefined)
+  // The directory is only written when the field is left, not on every keystroke:
+  // each write restarts the browsers that are running.
+  const [dirDraft, setDirDraft] = useState<string | undefined>(undefined)
   const [status, setStatus] = useState<ClientBrowserReport | undefined>(undefined)
   const [statusError, setStatusError] = useState<string | undefined>(undefined)
   const [saveError, setSaveError] = useState<string | undefined>(undefined)
@@ -253,9 +257,11 @@ export function BrowserSettingsSection(
             onChange={(event) => {
               const next = event.target.value === 'persistent'
               setPersistentChoice(next)
-              // Empty is what selects a fresh temporary profile; the persistent
-              // branch keeps the empty value until the user names a directory.
-              if (!next) write('userDataDir', '')
+              setDirDraft(undefined)
+              // Empty is what selects a fresh temporary profile, so 「保留登录」
+              // writes the default directory: picked on its own it has to keep
+              // the sign-ins, not quietly fall back to a temporary profile.
+              write('userDataDir', next ? DEFAULT_PROFILE_DIR : '')
             }}
           >
             <option value="temp">{t('settingsProfileTemp')}</option>
@@ -407,13 +413,18 @@ export function BrowserSettingsSection(
               t(PROFILE_DIR_COPY.label),
               <input
                 style={styles.input}
-                value={value.userDataDir}
+                value={dirDraft ?? value.userDataDir}
                 spellCheck={false}
-                placeholder="D:\\chrome-profile"
-                onChange={(event) => {
+                placeholder={DEFAULT_PROFILE_DIR}
+                onChange={(event) => { setDirDraft(event.target.value) }}
+                onBlur={() => {
+                  const next = dirDraft?.trim()
+                  setDirDraft(undefined)
+                  if (next === undefined || next === value.userDataDir) return
                   setPersistentChoice(true)
-                  write('userDataDir', event.target.value)
+                  write('userDataDir', next)
                 }}
+                onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
               />,
               PROFILE_DIR_COPY.hint === undefined ? undefined : t(PROFILE_DIR_COPY.hint),
             )
